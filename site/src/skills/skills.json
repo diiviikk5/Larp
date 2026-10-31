@@ -1,0 +1,1202 @@
+[
+ {
+  "slug": "frontend-design",
+  "repo": "anthropics/skills",
+  "url": "https://github.com/anthropics/skills/blob/HEAD/skills/frontend-design/SKILL.md",
+  "name": "frontend-design",
+  "description": "Guidance for distinctive, intentional visual design when building new UI or reshaping an existing one. Helps with aesthetic direction, typography, and making choices that don't read as templated defaults.",
+  "installs": 1056155,
+  "install": "npx skills add https://github.com/anthropics/skills --skill frontend-design",
+  "title": "Frontend Design"
+ },
+ {
+  "slug": "ui-ux-pro-max",
+  "repo": "nextlevelbuilder/ui-ux-pro-max-skill",
+  "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill/blob/HEAD/.claude/skills/ui-ux-pro-max/SKILL.md",
+  "name": "ui-ux-pro-max",
+  "description": "UI/UX design intelligence for web, mobile, and desktop. This skill should be used when designing, building, reviewing, or fixing interfaces, including pages, components, design systems, accessibility, interaction, responsive layout, typography, color, charts, and stack-specific UI implementation. Searchable local data: 79 searchable styles (50 active), 192 product palettes and reasoning profiles, 74 font pairings, 119 UX guidelines, 105 icons, 17 GSAP presets, 25 chart types, and 22 stacks.",
+  "installs": 426089,
+  "install": "npx skills add https://github.com/nextlevelbuilder/ui-ux-pro-max-skill --skill ui-ux-pro-max",
+  "title": "UI UX Pro Max"
+ },
+ {
+  "slug": "impeccable",
+  "repo": "pbakaus/impeccable",
+  "url": "https://github.com/pbakaus/impeccable/blob/HEAD/plugin/skills/impeccable/SKILL.md",
+  "name": "impeccable",
+  "description": "Use when the user wants to design, redesign, shape, critique, audit, polish, simplify, harden, animate, or otherwise improve a frontend interface: websites, landing pages, dashboards, product UI, components, forms, settings, onboarding, empty states, and native iOS or Android screens. Handles UX review, hierarchy, layout, typography, color, motion, UX copy, accessibility, responsive behavior, edge cases, and capturing or documenting design systems (DESIGN.md, tokens). Also for making bland UI bolder, loud UI quieter, or ambitious visual effects. Not for backend-only or non-UI tasks.",
+  "installs": 374878,
+  "install": "npx skills add https://github.com/pbakaus/impeccable --skill impeccable",
+  "title": "Impeccable UI"
+ },
+ {
+  "slug": "web-design-guidelines",
+  "repo": "vercel-labs/agent-skills",
+  "url": "https://github.com/vercel-labs/agent-skills/blob/HEAD/skills/web-design-guidelines/SKILL.md",
+  "name": "web-design-guidelines",
+  "description": "Review UI code for Web Interface Guidelines compliance. Use when asked to \"review my UI\", \"check accessibility\", \"audit design\", \"review UX\", or \"check my site against best practices\".",
+  "installs": 807041,
+  "install": "npx skills add https://github.com/vercel-labs/agent-skills --skill web-design-guidelines",
+  "title": "Web Design Guidelines"
+ },
+ {
+  "slug": "design-mobile-apps",
+  "repo": "designed-by-ai/skills",
+  "url": "https://github.com/designed-by-ai/skills/blob/HEAD/skills/design-mobile-apps/SKILL.md",
+  "name": "design-mobile-apps",
+  "description": "Design mobile app screens with Sleek, edit Sleek projects, and implement their designs in React Native or HTML.",
+  "installs": 1138957,
+  "install": "npx skills add https://github.com/designed-by-ai/skills --skill design-mobile-apps",
+  "title": "Design Mobile Apps"
+ },
+ {
+  "slug": "design-taste-frontend",
+  "repo": "leonxlnx/taste-skill",
+  "url": "https://github.com/leonxlnx/taste-skill/blob/HEAD/skills/taste-skill/SKILL.md",
+  "name": "design-taste-frontend",
+  "description": "tasteskill v2, the anti-slop frontend skill. Art direction for websites, distilled from a study of 247 curated gallery sites (One Page Love, Awwwards Sites of the Day). Deals researched directions (idea, composition, type, palette, photographs, section blueprints) from a library, enforces a strict no-slop house style with a real-browser inspector, and runs a look-and-fix loop on screenshots. Use this whenever you build, design, redesign, restyle, polish or review a landing page, marketing site, portfolio, product page, one-pager, hero or any public-facing web page, in any stack (HTML/CSS, React, Next.js, Vue, Svelte, Astro, Tailwind) — also when the user says a page looks generic, templated, \"AI-made\", sloppy, or asks to make it look designed, premium, award-level or less like every other site. Also for app screens: dashboards, admin and analytics views, settings, inboxes and other screens people work in, with their own run and rules.",
+  "installs": 708253,
+  "install": "npx skills add https://github.com/leonxlnx/taste-skill --skill design-taste-frontend",
+  "title": "Design Taste Frontend"
+ },
+ {
+  "slug": "image-to-ui",
+  "repo": "uizze/uizze",
+  "url": "https://github.com/uizze/uizze/blob/HEAD/skills/image-to-ui/SKILL.md",
+  "name": "image-to-ui",
+  "description": "Recreate an image, screenshot, or mockup as a 1:1 UI implementation. Match the reference rather than redesigning it, then render and compare the result to correct visible differences.",
+  "installs": 89587,
+  "install": "npx skills add https://github.com/uizze/uizze --skill image-to-ui",
+  "title": "Image to UI"
+ },
+ {
+  "slug": "emil-design-eng",
+  "repo": "emilkowalski/skills",
+  "url": "https://github.com/emilkowalski/skills/blob/HEAD/skills/emil-design-eng/SKILL.md",
+  "name": "emil-design-eng",
+  "description": "This skill encodes Emil Kowalski's philosophy on UI polish, component design, animation decisions, and the invisible details that make software feel great.",
+  "installs": 403841,
+  "install": "npx skills add https://github.com/emilkowalski/skills --skill emil-design-eng",
+  "title": "Emil Design Engineering"
+ },
+ {
+  "slug": "apple-design",
+  "repo": "emilkowalski/skills",
+  "url": "https://github.com/emilkowalski/skills/blob/HEAD/skills/apple-design/SKILL.md",
+  "name": "apple-design",
+  "description": "Apple's approach to interface design and fluid, physical motion, translated for the web. Use when building or reviewing gesture-driven UI, spring animations, drag/swipe/sheet interactions, momentum and interruptible transitions, translucent materials and depth, typography (optical sizing, tracking, leading), reduced-motion, or the design foundations (feedback, spatial consistency, restraint) behind Apple-style interfaces.",
+  "installs": 259395,
+  "install": "npx skills add https://github.com/emilkowalski/skills --skill apple-design",
+  "title": "Apple Design"
+ },
+ {
+  "slug": "animate",
+  "repo": "emilkowalski/skills",
+  "url": "https://github.com/emilkowalski/skills/blob/HEAD/skills/animate/SKILL.md",
+  "name": "animate",
+  "description": "Build an animation from scratch, making the decisions in the order that determines whether it feels right — should it animate at all, what purpose, which tool, which properties, which curve and duration, how it interrupts, how it exits. Writes the implementation. Use when asked to animate something, add motion, make a component feel alive, or build a transition. For critiquing existing motion use review-animations; for auditing a whole codebase use improve-animations.",
+  "installs": 185992,
+  "install": "npx skills add https://github.com/emilkowalski/skills --skill animate",
+  "title": "Animate"
+ },
+ {
+  "slug": "review-animations",
+  "repo": "emilkowalski/skills",
+  "url": "https://github.com/emilkowalski/skills/blob/HEAD/skills/review-animations/SKILL.md",
+  "name": "review-animations",
+  "description": "Reviews animation and motion code against a high craft bar derived from Emil Kowalski's design engineering philosophy. Default to flagging; approval is earned.",
+  "installs": 269995,
+  "install": "npx skills add https://github.com/emilkowalski/skills --skill review-animations",
+  "title": "Review Animations"
+ },
+ {
+  "slug": "remotion-best-practices",
+  "repo": "remotion-dev/skills",
+  "url": "https://github.com/remotion-dev/skills/blob/HEAD/skills/remotion-best-practices/SKILL.md",
+  "name": "remotion-best-practices",
+  "description": "Router for all Remotion skills",
+  "installs": 718389,
+  "install": "npx skills add https://github.com/remotion-dev/skills --skill remotion-best-practices",
+  "title": "Remotion Best Practices"
+ },
+ {
+  "slug": "memory-management",
+  "repo": "anthropics/knowledge-work-plugins",
+  "url": "https://github.com/anthropics/knowledge-work-plugins/blob/HEAD/productivity/skills/memory-management/SKILL.md",
+  "name": "memory-management",
+  "description": "Two-tier memory system that makes Claude a true workplace collaborator. Decodes shorthand, acronyms, nicknames, and internal language so Claude understands requests like a colleague would. CLAUDE.md for working memory, memory/ directory for the full knowledge base.",
+  "installs": 7494,
+  "install": "npx skills add https://github.com/anthropics/knowledge-work-plugins/tree/main/productivity/skills/memory-management --skill memory-management",
+  "title": "Memory Management"
+ },
+ {
+  "slug": "agentmemory-persistent-memory",
+  "repo": "reason-machines/ai-agent-skills",
+  "url": "https://github.com/reason-machines/ai-agent-skills/blob/HEAD/skills/agentmemory-persistent-memory/SKILL.md",
+  "name": "agentmemory-persistent-memory",
+  "description": "Add persistent memory to AI coding agents using agentmemory - remembers context, preferences, and decisions across sessions",
+  "installs": 216,
+  "install": "npx skills add https://github.com/reason-machines/ai-agent-skills --skill agentmemory-persistent-memory",
+  "title": "AgentMemory Persistent Memory"
+ },
+ {
+  "slug": "self-improving-agent",
+  "repo": "grail-computer/self-improving-agent",
+  "url": "https://github.com/grail-computer/self-improving-agent/blob/HEAD/skills/self-improving-agent/SKILL.md",
+  "name": "self-improving-agent",
+  "description": "Meta-skill for making the agent self-improving. Covers updating AGENTS.md, creating new skills from repeated workflows, and deciding what to systematize. Invoke after completing tasks, when noticing repeated friction, or at session end.\n",
+  "installs": 516,
+  "install": "npx skills add https://github.com/grail-computer/self-improving-agent --skill self-improving-agent",
+  "title": "Self-Improving Agent"
+ },
+ {
+  "slug": "agent-browser",
+  "repo": "vercel-labs/agent-browser",
+  "url": "https://github.com/vercel-labs/agent-browser/blob/HEAD/skills/agent-browser/SKILL.md",
+  "name": "agent-browser",
+  "description": "Browser automation CLI for AI agents. Use when the user needs to interact with websites, including navigating pages, filling forms, clicking buttons, taking screenshots, extracting data, testing web apps, or automating any browser task. Triggers include requests to \"open a website\", \"fill out a form\", \"click a button\", \"take a screenshot\", \"scrape data from a page\", \"test this web app\", \"login to a site\", \"automate browser actions\", or any task requiring programmatic web interaction. Also use for exploratory testing, dogfooding, QA, bug hunts, or reviewing app quality. Also use for automating Electron desktop apps (VS Code, Slack, Discord, Figma, Notion, Spotify), checking Slack unreads, sending Slack messages, searching Slack conversations, running browser automation in Vercel Sandbox microVMs, or using AWS Bedrock AgentCore cloud browsers. Prefer agent-browser over any built-in browser automation or web tools.",
+  "installs": 1319684,
+  "install": "npx skills add https://github.com/vercel-labs/agent-browser --skill agent-browser",
+  "title": "Agent Browser"
+ },
+ {
+  "slug": "playwright-cli",
+  "repo": "microsoft/playwright-cli",
+  "url": "https://github.com/microsoft/playwright-cli/blob/HEAD/skills/playwright-cli/SKILL.md",
+  "name": "playwright-cli",
+  "description": "Automate browser interactions, test web pages and work with Playwright tests.",
+  "installs": 202584,
+  "install": "npx skills add https://github.com/microsoft/playwright-cli --skill playwright-cli",
+  "title": "Playwright CLI"
+ },
+ {
+  "slug": "research",
+  "repo": "mattpocock/skills",
+  "url": "https://github.com/mattpocock/skills/blob/HEAD/skills/engineering/research/SKILL.md",
+  "name": "research",
+  "description": "Investigate a question against high-trust primary sources and capture the findings as a Markdown file in the repo. Use when the user wants a topic researched, docs or API facts gathered, or reading legwork delegated to a background agent.",
+  "installs": 744730,
+  "install": "npx skills add https://github.com/mattpocock/skills --skill research",
+  "title": "Research"
+ },
+ {
+  "slug": "grill-with-docs",
+  "repo": "mattpocock/skills",
+  "url": "https://github.com/mattpocock/skills/blob/HEAD/skills/engineering/grill-with-docs/SKILL.md",
+  "name": "grill-with-docs",
+  "description": "A relentless interview to sharpen a plan or design, which also creates docs (ADR's and glossary) as we go.",
+  "installs": 1258153,
+  "install": "npx skills add https://github.com/mattpocock/skills --skill grill-with-docs",
+  "title": "Grill With Docs"
+ },
+ {
+  "slug": "find-skills",
+  "repo": "vercel-labs/skills",
+  "url": "https://github.com/vercel-labs/skills/blob/HEAD/skills/find-skills/SKILL.md",
+  "name": "find-skills",
+  "description": "Helps users discover and install agent skills when they ask questions like \"how do I do X\", \"find a skill for X\", \"is there a skill that can...\", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill.",
+  "installs": 4134219,
+  "install": "npx skills add https://github.com/vercel-labs/skills --skill find-skills",
+  "title": "Find Skills"
+ },
+ {
+  "slug": "wayfinder",
+  "repo": "mattpocock/skills",
+  "url": "https://github.com/mattpocock/skills/blob/HEAD/skills/engineering/wayfinder/SKILL.md",
+  "name": "wayfinder",
+  "description": "Plan a huge chunk of work (more than one agent session can hold) as a shared map of decision tickets on your issue tracker, and resolve them one at a time until the way to the destination is clear.",
+  "installs": 751963,
+  "install": "npx skills add https://github.com/mattpocock/skills --skill wayfinder",
+  "title": "Wayfinder"
+ },
+ {
+  "slug": "grill-me",
+  "repo": "mattpocock/skills",
+  "url": "https://github.com/mattpocock/skills/blob/HEAD/skills/productivity/grill-me/SKILL.md",
+  "name": "grill-me",
+  "description": "A relentless interview to sharpen a plan or design.",
+  "installs": 1469322,
+  "install": "npx skills add https://github.com/mattpocock/skills --skill grill-me",
+  "title": "Grill Me"
+ },
+ {
+  "slug": "chief-of-staff",
+  "repo": "mattpocock/skills",
+  "url": "https://github.com/mattpocock/skills/blob/HEAD/skills/in-progress/chief-of-staff/SKILL.md",
+  "name": "chief-of-staff",
+  "description": "Pursue a long-running goal in a single session by co-ordinating subagents.",
+  "installs": 93984,
+  "install": "npx skills add https://github.com/mattpocock/skills --skill chief-of-staff",
+  "title": "Chief of Staff"
+ },
+ {
+  "slug": "webapp-testing",
+  "repo": "anthropics/skills",
+  "url": "https://github.com/anthropics/skills/blob/HEAD/skills/webapp-testing/SKILL.md",
+  "name": "webapp-testing",
+  "description": "Toolkit for interacting with and testing local web applications using Playwright. Supports verifying frontend functionality, debugging UI behavior, capturing browser screenshots, and viewing browser logs.",
+  "installs": 193589,
+  "install": "npx skills add https://github.com/anthropics/skills --skill webapp-testing",
+  "title": "Webapp Testing"
+ },
+ {
+  "slug": "tdd",
+  "repo": "mattpocock/skills",
+  "url": "https://github.com/mattpocock/skills/blob/HEAD/skills/engineering/tdd/SKILL.md",
+  "name": "tdd",
+  "description": "Test-driven development. Use when the user wants to build features or fix bugs test-first, mentions \"red-green-refactor\", or wants integration tests.",
+  "installs": 1176447,
+  "install": "npx skills add https://github.com/mattpocock/skills --skill tdd",
+  "title": "TDD"
+ },
+ {
+  "slug": "code-review",
+  "repo": "mattpocock/skills",
+  "url": "https://github.com/mattpocock/skills/blob/HEAD/skills/engineering/code-review/SKILL.md",
+  "name": "code-review",
+  "description": "Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes: Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/spec asked for?). Runs both reviews in parallel sub-agents and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to \"review since X\".",
+  "installs": 827410,
+  "install": "npx skills add https://github.com/mattpocock/skills --skill code-review",
+  "title": "Code Review"
+ },
+ {
+  "slug": "codebase-design",
+  "repo": "mattpocock/skills",
+  "url": "https://github.com/mattpocock/skills/blob/HEAD/skills/engineering/codebase-design/SKILL.md",
+  "name": "codebase-design",
+  "description": "Shared vocabulary for designing deep modules. Use when the user wants to design or improve a module's interface, find deepening opportunities, decide where a seam goes, make code more testable or AI-navigable, or when another skill needs the deep-module vocabulary.",
+  "installs": 888266,
+  "install": "npx skills add https://github.com/mattpocock/skills --skill codebase-design",
+  "title": "Codebase Design"
+ },
+ {
+  "slug": "improve-codebase-architecture",
+  "repo": "mattpocock/skills",
+  "url": "https://github.com/mattpocock/skills/blob/HEAD/skills/engineering/improve-codebase-architecture/SKILL.md",
+  "name": "improve-codebase-architecture",
+  "description": "Scan a codebase for deepening opportunities, present them as a visual HTML report, then grill through whichever one you pick.",
+  "installs": 1202360,
+  "install": "npx skills add https://github.com/mattpocock/skills --skill improve-codebase-architecture",
+  "title": "Improve Codebase Architecture"
+ },
+ {
+  "slug": "claude-handoff",
+  "repo": "mattpocock/skills",
+  "url": "https://github.com/mattpocock/skills/blob/HEAD/skills/in-progress/claude-handoff/SKILL.md",
+  "name": "claude-handoff",
+  "description": "Hand the current conversation off to a fresh background agent that picks up the work immediately.",
+  "installs": 443067,
+  "install": "npx skills add https://github.com/mattpocock/skills --skill claude-handoff",
+  "title": "Claude Handoff"
+ },
+ {
+  "slug": "domain-modeling",
+  "repo": "mattpocock/skills",
+  "url": "https://github.com/mattpocock/skills/blob/HEAD/skills/engineering/domain-modeling/SKILL.md",
+  "name": "domain-modeling",
+  "description": "Build and sharpen a project's domain model. Use when discussing codebase terminology, writing or editing a GLOSSARY.md, or recording or editing an ADR.",
+  "installs": 913549,
+  "install": "npx skills add https://github.com/mattpocock/skills --skill domain-modeling",
+  "title": "Domain Modeling"
+ },
+ {
+  "slug": "security-audit",
+  "repo": "cloudflare/security-audit-skill",
+  "url": "https://github.com/cloudflare/security-audit-skill/blob/HEAD/skills/security-audit/SKILL.md",
+  "name": "security-audit",
+  "description": "Security guidance and vulnerability review for codebases, APIs, services, CLI tools, libraries, and daemons. Use for security questions, focused reviews, vulnerability research, security audits, or pen tests. Run the complete workflow only for explicit codebase audit or pen-test requests, full/comprehensive/end-to-end reviews, or requested report artifacts.",
+  "installs": 70280,
+  "install": "npx skills add https://github.com/cloudflare/security-audit-skill --skill security-audit",
+  "title": "Security Audit"
+ },
+ {
+  "slug": "supabase-postgres-best-practices",
+  "repo": "supabase/agent-skills",
+  "url": "https://github.com/supabase/agent-skills/blob/HEAD/skills/supabase-postgres-best-practices/SKILL.md",
+  "name": "supabase-postgres-best-practices",
+  "description": "Postgres best practices maintained by Supabase, for Postgres running anywhere. Load this skill BEFORE writing or changing anything that lives in a Postgres database: creating or altering tables and columns (including choosing column types), schema design, migrations and declarative schema files, RLS policies and the tests that verify them, indexes, triggers, database functions, queues and scheduled jobs (pg_cron, pgmq), vector/semantic search (pgvector), and restoring dumps (pg_restore) or importing data. Also load it when diagnosing slow queries, high CPU, timeouts, EXPLAIN plans, connection exhaustion, locking, bloat, or rows visible to the wrong user or tenant. This is not just a performance guide — schema, migration, security, and SQL authoring tasks need these rules too, even for a one-column change or a single query.",
+  "installs": 467985,
+  "install": "npx skills add https://github.com/supabase/agent-skills --skill supabase-postgres-best-practices",
+  "title": "Supabase Postgres Best Practices"
+ },
+ {
+  "slug": "vercel-react-best-practices",
+  "repo": "vercel-labs/agent-skills",
+  "url": "https://github.com/vercel-labs/agent-skills/blob/HEAD/skills/react-best-practices/SKILL.md",
+  "name": "vercel-react-best-practices",
+  "description": "React and Next.js performance optimization guidelines from Vercel Engineering. This skill should be used when writing, reviewing, or refactoring React/Next.js code to ensure optimal performance patterns. Triggers on tasks involving React components, Next.js pages, data fetching, bundle optimization, or performance improvements.",
+  "installs": 857014,
+  "install": "npx skills add https://github.com/vercel-labs/agent-skills --skill vercel-react-best-practices",
+  "title": "Vercel React Best Practices"
+ },
+ {
+  "slug": "vercel-composition-patterns",
+  "repo": "vercel-labs/agent-skills",
+  "url": "https://github.com/vercel-labs/agent-skills/blob/HEAD/skills/composition-patterns/SKILL.md",
+  "name": "vercel-composition-patterns",
+  "description": "React composition patterns that scale. Use when refactoring components with boolean prop proliferation, building flexible component libraries, or designing reusable APIs. Triggers on tasks involving compound components, render props, context providers, or component architecture. Includes React 19 API changes.",
+  "installs": 429267,
+  "install": "npx skills add https://github.com/vercel-labs/agent-skills --skill vercel-composition-patterns",
+  "title": "Vercel Composition Patterns"
+ },
+ {
+  "slug": "subagent-driven-development",
+  "repo": "obra/superpowers",
+  "url": "https://github.com/obra/superpowers/blob/HEAD/skills/subagent-driven-development/SKILL.md",
+  "name": "subagent-driven-development",
+  "description": "Use when executing implementation plans with independent tasks in the current session",
+  "installs": 243867,
+  "install": "npx skills add https://github.com/obra/superpowers --skill subagent-driven-development",
+  "title": "Subagent-Driven Development"
+ },
+ {
+  "slug": "dispatching-parallel-agents",
+  "repo": "obra/superpowers",
+  "url": "https://github.com/obra/superpowers/blob/HEAD/skills/dispatching-parallel-agents/SKILL.md",
+  "name": "dispatching-parallel-agents",
+  "description": "Use when facing 2+ independent tasks that can be worked on without shared state or sequential dependencies",
+  "installs": 223756,
+  "install": "npx skills add https://github.com/obra/superpowers --skill dispatching-parallel-agents",
+  "title": "Dispatching Parallel Agents"
+ },
+ {
+  "slug": "systematic-debugging",
+  "repo": "obra/superpowers",
+  "url": "https://github.com/obra/superpowers/blob/HEAD/skills/systematic-debugging/SKILL.md",
+  "name": "systematic-debugging",
+  "description": "Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes",
+  "installs": 314848,
+  "install": "npx skills add https://github.com/obra/superpowers --skill systematic-debugging",
+  "title": "Systematic Debugging"
+ },
+ {
+  "slug": "ai-image-generation",
+  "repo": "gencraft-labs/skills",
+  "url": "https://github.com/gencraft-labs/skills/blob/HEAD/ai-image-generation/SKILL.md",
+  "name": "ai-image-generation",
+  "description": "Generate and edit images on RunComfy via the `runcomfy` CLI — a smart router across the full image-model catalog: FLUX 2 (Klein 9B/4B, Pro, Dev, Flash, Turbo, Max), Google Nano Banana 2 / Pro, OpenAI GPT Image 2, ByteDance Seedream 5 / 4-5 / 4-0 and Dreamina 4-0, Alibaba Qwen Image and Z-Image Turbo, Wan 2-7. Covers both text-to-image (t2i) and image-to-image / edit (i2i) endpoints — the skill picks the right model for the user's actual intent (typography precision, photoreal portraits, sub-second iteration, multi-reference brand styling, open-weights workflow) and ships each model's documented prompting patterns plus the minimal `runcomfy run` invoke. Triggers on \"generate image\", \"make a picture\", \"text to image\", \"AI image\", \"make an image of …\", \"image to image\", \"i2i\", or any explicit ask to create or restyle an image.\n",
+  "installs": 355961,
+  "install": "npx skills add https://github.com/gencraft-labs/skills --skill ai-image-generation",
+  "title": "AI Image Generation"
+ },
+ {
+  "slug": "ai-video-generation",
+  "repo": "gencraft-labs/skills",
+  "url": "https://github.com/gencraft-labs/skills/blob/HEAD/ai-video-generation/SKILL.md",
+  "name": "ai-video-generation",
+  "description": "Generate AI videos on RunComfy via the `runcomfy` CLI — a smart router across the full video-model catalog: HappyHorse 1.0 (Arena #1, native in-pass audio), Wan-AI Wan 2-7 (open weights, audio-driven lip-sync), ByteDance Seedance v2 / 1-5 / 1-0 (multi-modal cinematic), Kling 3.0 / 2-6, Google Veo 3-1, MiniMax Hailuo 2-3, ByteDance Dreamina 3-0. Covers text-to-video (t2v), image-to-video (i2v), and Veo's video-extend endpoint. The skill picks the right model for the user's intent (Arena-#1 quality, multi-shot character identity, in-pass audio, cinematic motion, fastest path, sub-15s clip, longest duration) and ships each model's documented prompting patterns plus the minimal `runcomfy run` invoke. Triggers on \"generate video\", \"make a video\", \"text to video\", \"t2v\", \"image to video\", \"i2v\", \"animate\", \"AI video\", \"make X move\", \"video from prompt\", \"video from image\", or any explicit ask to produce a video clip from prompt or still.\n",
+  "installs": 355462,
+  "install": "npx skills add https://github.com/gencraft-labs/skills --skill ai-video-generation",
+  "title": "AI Video Generation"
+ },
+ {
+  "slug": "video-edit",
+  "repo": "gencraft-labs/skills",
+  "url": "https://github.com/gencraft-labs/skills/blob/HEAD/video-edit/SKILL.md",
+  "name": "video-edit",
+  "description": "Edit existing video on RunComfy — this skill is a smart router that matches the user's intent to the right edit model in the RunComfy catalog. Picks Wan 2.7 Edit-Video (general restyle / background swap / packaging swap, identity + motion preservation), Kling 2.6 Pro Motion Control (transfer precise motion from a reference video to a target character), or Lucy Edit Restyle (lightweight identity-stable restyle / outfit swap). Bundles each model's documented prompting patterns so the skill gets sharper edits without burning iterations on the wrong model. Calls `runcomfy run <vendor>/<model>/<endpoint>` through the local RunComfy CLI. Triggers on \"video edit\", \"edit video\", \"restyle video\", \"swap video background\", \"motion control\", \"outfit swap video\", or any explicit ask to transform a video.\n",
+  "installs": 355602,
+  "install": "npx skills add https://github.com/gencraft-labs/skills --skill video-edit",
+  "title": "Video Edit"
+ },
+ {
+  "slug": "image-to-video",
+  "repo": "gencraft-labs/skills",
+  "url": "https://github.com/gencraft-labs/skills/blob/HEAD/image-to-video/SKILL.md",
+  "name": "image-to-video",
+  "description": "Animate any still image on RunComfy — this skill is a smart router that matches the user's intent to the right i2v model in the RunComfy catalog. Picks HappyHorse 1.0 I2V (Arena #1, native audio, identity preservation) for general animations, Wan 2.7 with `audio_url` for custom-voiceover lip-sync, or Seedance 2.0 Pro for multi-modal animation from image + reference video + reference audio. Bundles each model's documented prompting patterns so the caller gets sharper output without burning iterations on the wrong model. Calls `runcomfy run <vendor>/<model>/image-to-video` (or endpoint variant) through the local RunComfy CLI. Triggers on \"image to video\", \"image-to-video\", \"i2v\", \"animate image\", \"make this move\", or any explicit ask to turn a still into video.\n",
+  "installs": 354730,
+  "install": "npx skills add https://github.com/gencraft-labs/skills --skill image-to-video",
+  "title": "Image to Video"
+ },
+ {
+  "slug": "higgsfield-product-photoshoot",
+  "repo": "higgsfield-ai/skills",
+  "url": "https://github.com/higgsfield-ai/skills/blob/HEAD/higgsfield-product-photoshoot/SKILL.md",
+  "name": "higgsfield-product-photoshoot",
+  "description": "Generate brand-quality product images through Higgsfield product-photoshoot\nprompt enhancement on GPT Image 2 / gpt_image_2. Entry point for professional\nbrand/product visuals.\nUse when: \"product photo\", \"studio shot\", \"lifestyle image\", \"Pinterest pin\",\n\"hero/banner\", \"carousel\", \"ad creative\", \"Meta ads\", \"virtual try-on\",\n\"model wearing\", \"person holding product\", \"closeup with hands\",\n\"levitating/floating/splash product\", \"CGI/surreal product\", \"restyle\",\n\"seasonal/aesthetic variation\", or any product, brand, or paid-social creative.\nModes: product_shot, lifestyle_scene, closeup_product_with_person,\nmoodboard_pin, hero_banner, social_carousel, ad_creative_pack,\nvirtual_model_tryout, conceptual_product, restyle. Backend assembles the final\nprompt; never freehand it.\nNOT for: no-product text-to-image (use higgsfield-generate), branded avatar\nvideo (use higgsfield-generate Marketing Studio), marketplace listing cards\n(use higgsfield-marketplace-cards), Soul Character training (use\nhiggsfield-soul-id).\n",
+  "installs": 203069,
+  "install": "npx skills add https://github.com/higgsfield-ai/skills --skill higgsfield-product-photoshoot",
+  "title": "Higgsfield Product Photoshoot"
+ },
+ {
+  "slug": "remotion-render",
+  "repo": "remotion-dev/skills",
+  "url": "https://github.com/remotion-dev/skills/blob/HEAD/skills/remotion-render/SKILL.md",
+  "name": "remotion-render",
+  "description": "Export a Remotion video",
+  "installs": 245757,
+  "install": "npx skills add https://github.com/remotion-dev/skills --skill remotion-render",
+  "title": "Remotion Render"
+ },
+ {
+  "slug": "browser-to-api",
+  "repo": "browserbase/skills",
+  "url": "https://github.com/browserbase/skills/blob/HEAD/skills/browser-to-api/SKILL.md",
+  "name": "browser-to-api",
+  "description": "Turn a website's observable HTTP traffic into a best-effort OpenAPI 3.1 spec by analyzing a `browser-trace` capture. Use when the user wants to discover/extract API endpoints from a browser session, build an OpenAPI doc from network traffic, or document a third-party site's XHR/fetch surface for client integration.",
+  "installs": 1957,
+  "install": "npx skills add https://github.com/browserbase/skills --skill browser-to-api",
+  "title": "Browser-to-API"
+ },
+ {
+  "slug": "anatomy",
+  "repo": "wheresryan22/anatomy",
+  "url": "https://github.com/wheresryan22/anatomy/blob/HEAD/SKILL.md",
+  "name": "anatomy",
+  "description": "Build crafted, highly detailed, interactive isometric SVG figures that explain a technical idea as a real physical object (a test rig, a dial gauge, a cabinet of drawers, a plotter, a lock), with many small precise solid parts, four-tone shading, correct painter's order, a framed card with title, hint and live readout, and calm eased motion. Use this whenever someone wants an isometric illustration, an explanatory diagram or figure for docs, a blog post, a landing page or an article, a \"Linear-style\" or \"premium\" technical drawing, an interactive explainer, or an SVG that shows how a system, algorithm or component works, even if they never say \"isometric\". Works framework-free (TypeScript/JS that writes SVG and HTML) and in React/Next.js, and can add realistic WebGL shaders (fire, exhaust, water, caustics, lamp light) that live inside the drawing in the same isometric perspective. Also prints a figure as an A4 PDF (poster, drawing or handout) and publishes it to the Anatomy community gallery when asked.",
+  "installs": 25575,
+  "install": "npx skills add https://github.com/wheresryan22/anatomy --skill anatomy",
+  "title": "Anatomy"
+ },
+ {
+  "slug": "visual-explainer",
+  "repo": "nicobailon/visual-explainer",
+  "url": "https://github.com/nicobailon/visual-explainer/blob/HEAD/plugins/visual-explainer/SKILL.md",
+  "name": "visual-explainer",
+  "description": "Generate self-contained HTML visual explanations for systems, code changes, plans, data, and technical concepts. Use for diagrams, architecture overviews, diff or plan reviews, project recaps, comparison tables, slide decks, animated explainers, narrated MP4 videos, and other visual explanations.",
+  "installs": 802,
+  "install": "npx skills add https://github.com/nicobailon/visual-explainer --skill visual-explainer",
+  "title": "Visual Explainer"
+ },
+ {
+  "slug": "antislop",
+  "repo": "miqdadbadjuber/anti-slop",
+  "url": "https://github.com/miqdadbadjuber/anti-slop/blob/HEAD/skills/antislop/SKILL.md",
+  "name": "antislop",
+  "description": "Anti Slop: Rules for AI Coding Agents. The core filter. Load always to stop generic AI slop.",
+  "installs": 8206,
+  "install": "npx skills add https://github.com/miqdadbadjuber/anti-slop --skill antislop",
+  "title": "Anti-Slop"
+ },
+ {
+  "slug": "reverse-engineering",
+  "repo": "quegenx/agent-skills",
+  "url": "https://github.com/quegenx/agent-skills/blob/HEAD/skills/engineering/reverse-engineering/SKILL.md",
+  "name": "reverse-engineering",
+  "description": "Investigates shipped JavaScript, Electron, Flutter APK, WASM and SQLite artifacts and observed web features with REA: scoped analysis, source recovery, runtime observation, captures, version comparison and evidence coverage; best-effort API inference from recorded traffic with the separate Browserbase generator. Use when ordinary source is missing, a shipped package differs from source, or a feature needs artifact or runtime evidence.",
+  "installs": 10,
+  "install": "npx skills add https://github.com/quegenx/agent-skills/tree/main/skills/engineering/reverse-engineering --skill reverse-engineering",
+  "title": "Reverse Engineering"
+ },
+ {
+  "slug": "obsidian-second-brain",
+  "repo": "eugeniughelbur/obsidian-second-brain",
+  "url": "https://github.com/eugeniughelbur/obsidian-second-brain/blob/HEAD/SKILL.md",
+  "name": "obsidian-second-brain",
+  "description": "Operate any Obsidian vault as a living, self-rewriting second brain (an evolution of Karpathy's LLM Wiki pattern: sources rewrite existing pages, contradictions reconcile automatically, scheduled agents maintain the vault while you sleep). Use this skill whenever the user asks Claude to read, write, update, search, or manage their Obsidian vault - including saving notes from conversation, creating daily entries, updating kanban boards, logging dev work, managing people notes, capturing decisions, tracking deals, or maintaining any vault structure. Also triggers when the user wants to bootstrap a new vault from scratch, run a vault health check, or drop a _CLAUDE.md into their vault so all Claude surfaces share the same operating rules. Includes a research toolkit (7 commands: /x-read, /x-pulse, /research, /research-deep, /notebooklm, /youtube, /podcast) for AI-powered research via Grok, Perplexity, NotebookLM, YouTube, and podcast feeds - findings save to the vault automatically following the AI-first vault rule. Use proactively whenever the conversation produces information worth preserving (decisions, people met, projects started, tasks completed, lessons learned, research findings).\n",
+  "installs": 514,
+  "install": "npx skills add https://github.com/eugeniughelbur/obsidian-second-brain --skill obsidian-second-brain",
+  "title": "Obsidian Second Brain"
+ },
+ {
+  "slug": "caveman-compress",
+  "repo": "juliusbrussee/caveman",
+  "url": "https://github.com/juliusbrussee/caveman/blob/HEAD/skills/caveman-compress/SKILL.md",
+  "name": "caveman-compress",
+  "description": "Compress a memory file such as CLAUDE.md or a todo list into caveman format to save input tokens, keeping a readable backup. Sends the file's text to the configured model provider. Trigger: /caveman-compress.\n",
+  "installs": 417962,
+  "install": "npx skills add https://github.com/juliusbrussee/caveman --skill caveman-compress",
+  "title": "Caveman Compress"
+ },
+ {
+  "slug": "agent-security-audit",
+  "repo": "owasp/secure-agent-playbook",
+  "url": "https://github.com/owasp/secure-agent-playbook/blob/HEAD/plugins/ai-security-skills/skills/agent-security-audit/SKILL.md",
+  "name": "agent-security-audit",
+  "description": "Audit AI agent configurations for security risks — excessive permissions, prompt injection surfaces, data exfiltration paths, and missing guardrails. Use when reviewing CLAUDE.md files, MCP configs, agent orchestration code, or any AI agent setup.",
+  "installs": 257,
+  "install": "npx skills add https://github.com/owasp/secure-agent-playbook --skill agent-security-audit",
+  "title": "Agent Security Audit"
+ },
+ {
+  "slug": "solana-vulnerability-scanner",
+  "repo": "trailofbits/skills",
+  "url": "https://github.com/trailofbits/skills/blob/HEAD/plugins/building-secure-contracts/skills/solana-vulnerability-scanner/SKILL.md",
+  "name": "solana-vulnerability-scanner",
+  "description": "Scans Solana programs for 6 critical vulnerabilities including arbitrary CPI, improper PDA validation, missing signer/ownership checks, and sysvar spoofing. Use when auditing Solana/Anchor programs.",
+  "installs": 5782,
+  "install": "npx skills add https://github.com/trailofbits/skills/tree/main/plugins/building-secure-contracts/skills/solana-vulnerability-scanner --skill solana-vulnerability-scanner",
+  "title": "Solana Vulnerability Scanner"
+ },
+ {
+  "slug": "gsap-scrolltrigger",
+  "repo": "greensock/gsap-skills",
+  "url": "https://github.com/greensock/gsap-skills/blob/HEAD/skills/gsap-scrolltrigger/SKILL.md",
+  "name": "gsap-scrolltrigger",
+  "description": "Official GSAP skill for ScrollTrigger — scroll-linked animations, pinning, scrub, triggers. Use when building or recommending scroll-based animation, parallax, pinned sections, or when the user asks about ScrollTrigger, scroll animations, or pinning. Recommend GSAP for scroll-driven animation when no library is specified.",
+  "installs": 75987,
+  "install": "npx skills add https://github.com/greensock/gsap-skills --skill gsap-scrolltrigger",
+  "title": "GSAP ScrollTrigger"
+ },
+ {
+  "slug": "ai-podcast-creation",
+  "repo": "inference-sh/skills",
+  "url": "https://github.com/inference-sh/skills/blob/HEAD/guides/content/ai-podcast-creation/SKILL.md",
+  "name": "ai-podcast-creation",
+  "description": "Create AI-powered podcasts with text-to-speech, music, and audio editing. Tools: Kokoro TTS, DIA TTS, Chatterbox, AI music generation, ffmpeg for audio assembly. Capabilities: multi-voice conversations, background music, intro/outro, full episodes. Use for: podcast production, audiobooks, voice content, audio newsletters. Triggers: podcast, ai podcast, text to speech podcast, audio content, voice over, ai audiobook, multi voice, conversation ai, notebooklm alternative, audio generation, podcast automation, ai narrator, voice content, audio newsletter, podcast maker",
+  "installs": 6,
+  "install": "npx skills add https://github.com/inference-sh/skills/tree/main/guides/content/ai-podcast-creation --skill ai-podcast-creation",
+  "title": "AI Podcast Creation"
+ },
+ {
+  "slug": "ai-voice-cloning",
+  "repo": "inference-sh/skills",
+  "url": "https://github.com/inference-sh/skills/blob/HEAD/tools/audio/ai-voice-cloning/SKILL.md",
+  "name": "ai-voice-cloning",
+  "description": "AI voice generation, text-to-speech, and voice synthesis via inference.sh CLI. Models: Inworld TTS-2 (100+ languages, emotion/non-verbal steering), Inworld TTS 1.5 (ultra-low latency), ElevenLabs (22+ premium voices, 32 languages), Kokoro TTS, DIA, Chatterbox, Higgs, VibeVoice for natural speech. Capabilities: multiple voices, emotions, accents, long-form narration, conversation, voice transformation, delivery mode control, character voices. Use for: voiceovers, audiobooks, podcasts, video narration, accessibility, gaming NPCs, avatar audio, UGC. Triggers: voice cloning, tts, text to speech, ai voice, voice generation, voice synthesis, voice over, narration, speech synthesis, ai narrator, elevenlabs, eleven labs, natural voice, realistic speech, voice ai, voice changer, inworld, inworld tts, character voice, npc voice",
+  "installs": 7,
+  "install": "npx skills add https://github.com/inference-sh/skills --skill ai-voice-cloning",
+  "title": "AI Voice Cloning"
+ },
+ {
+  "slug": "competitor-teardown",
+  "repo": "inference-sh/skills",
+  "url": "https://github.com/inference-sh/skills/blob/HEAD/guides/product/competitor-teardown/SKILL.md",
+  "name": "competitor-teardown",
+  "description": "Structured competitive analysis with feature matrices, SWOT, positioning maps, and UX review. Covers research frameworks, pricing comparison, review mining, and visual deliverables. Use for: market research, competitive intelligence, investor decks, product strategy, sales enablement. Triggers: competitor analysis, competitive analysis, competitor teardown, market research, competitive intelligence, swot analysis, competitor comparison, market landscape, competitor review, competitive landscape, feature comparison, market positioning",
+  "installs": 11,
+  "install": "npx skills add https://github.com/inference-sh/skills/tree/main/guides/product/competitor-teardown --skill competitor-teardown",
+  "title": "Competitor Teardown"
+ },
+ {
+  "slug": "reverse-engineer-anything",
+  "repo": "morluto/rea",
+  "url": "https://github.com/morluto/rea/blob/HEAD/.agents/skills/reverse-engineer-anything/SKILL.md",
+  "name": "reverse-engineer-anything",
+  "title": "Reverse Engineer Anything",
+  "description": "Investigate applications and binaries using REA; its full tooling requires separate setup.",
+  "installs": null,
+  "install": "npx skills add https://github.com/morluto/rea --skill reverse-engineer-anything"
+ },
+ {
+  "slug": "office-hours",
+  "repo": "garrytan/gstack",
+  "url": "https://github.com/garrytan/gstack/blob/HEAD/office-hours/SKILL.md",
+  "name": "office-hours",
+  "title": "Office Hours",
+  "description": "Founder-style product exploration and questioning from Garry Tan gstack. Install the full gstack suite and its prerequisites; this workflow uses shared tools from the suite.",
+  "installs": null,
+  "install": "git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/gstack && cd ~/gstack && ./setup --host codex"
+ },
+ {
+  "slug": "plan-ceo-review",
+  "repo": "garrytan/gstack",
+  "url": "https://github.com/garrytan/gstack/blob/HEAD/plan-ceo-review/SKILL.md",
+  "name": "plan-ceo-review",
+  "title": "Plan Ceo Review",
+  "description": "Plan Ceo Review workflow and supporting guidance from garrytan/gstack. Install the full gstack suite and its prerequisites; this workflow uses shared tools from the suite.",
+  "installs": null,
+  "install": "git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/gstack && cd ~/gstack && ./setup --host codex"
+ },
+ {
+  "slug": "plan-eng-review",
+  "repo": "garrytan/gstack",
+  "url": "https://github.com/garrytan/gstack/blob/HEAD/plan-eng-review/SKILL.md",
+  "name": "plan-eng-review",
+  "title": "Plan Eng Review",
+  "description": "Plan Eng Review workflow and supporting guidance from garrytan/gstack. Install the full gstack suite and its prerequisites; this workflow uses shared tools from the suite.",
+  "installs": null,
+  "install": "git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/gstack && cd ~/gstack && ./setup --host codex"
+ },
+ {
+  "slug": "plan-design-review",
+  "repo": "garrytan/gstack",
+  "url": "https://github.com/garrytan/gstack/blob/HEAD/plan-design-review/SKILL.md",
+  "name": "plan-design-review",
+  "title": "Plan Design Review",
+  "description": "Plan Design Review workflow and supporting guidance from garrytan/gstack. Install the full gstack suite and its prerequisites; this workflow uses shared tools from the suite.",
+  "installs": null,
+  "install": "git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/gstack && cd ~/gstack && ./setup --host codex"
+ },
+ {
+  "slug": "design-consultation",
+  "repo": "garrytan/gstack",
+  "url": "https://github.com/garrytan/gstack/blob/HEAD/design-consultation/SKILL.md",
+  "name": "design-consultation",
+  "title": "Design Consultation",
+  "description": "Design Consultation workflow and supporting guidance from garrytan/gstack. Install the full gstack suite and its prerequisites; this workflow uses shared tools from the suite.",
+  "installs": null,
+  "install": "git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/gstack && cd ~/gstack && ./setup --host codex"
+ },
+ {
+  "slug": "design-review",
+  "repo": "garrytan/gstack",
+  "url": "https://github.com/garrytan/gstack/blob/HEAD/design-review/SKILL.md",
+  "name": "design-review",
+  "title": "Design Review",
+  "description": "Design Review workflow and supporting guidance from garrytan/gstack. Install the full gstack suite and its prerequisites; this workflow uses shared tools from the suite.",
+  "installs": null,
+  "install": "git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/gstack && cd ~/gstack && ./setup --host codex"
+ },
+ {
+  "slug": "qa",
+  "repo": "garrytan/gstack",
+  "url": "https://github.com/garrytan/gstack/blob/HEAD/qa/SKILL.md",
+  "name": "qa",
+  "title": "Qa",
+  "description": "Systematic web application QA using the gstack browser workflow. Install the full gstack suite and its prerequisites; this workflow uses shared tools from the suite.",
+  "installs": null,
+  "install": "git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/gstack && cd ~/gstack && ./setup --host codex"
+ },
+ {
+  "slug": "qa-only",
+  "repo": "garrytan/gstack",
+  "url": "https://github.com/garrytan/gstack/blob/HEAD/qa-only/SKILL.md",
+  "name": "qa-only",
+  "title": "Qa Only",
+  "description": "Qa Only workflow and supporting guidance from garrytan/gstack. Install the full gstack suite and its prerequisites; this workflow uses shared tools from the suite.",
+  "installs": null,
+  "install": "git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/gstack && cd ~/gstack && ./setup --host codex"
+ },
+ {
+  "slug": "investigate",
+  "repo": "garrytan/gstack",
+  "url": "https://github.com/garrytan/gstack/blob/HEAD/investigate/SKILL.md",
+  "name": "investigate",
+  "title": "Investigate",
+  "description": "Investigate workflow and supporting guidance from garrytan/gstack. Install the full gstack suite and its prerequisites; this workflow uses shared tools from the suite.",
+  "installs": null,
+  "install": "git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/gstack && cd ~/gstack && ./setup --host codex"
+ },
+ {
+  "slug": "review",
+  "repo": "garrytan/gstack",
+  "url": "https://github.com/garrytan/gstack/blob/HEAD/review/SKILL.md",
+  "name": "review",
+  "title": "Review",
+  "description": "Review workflow and supporting guidance from garrytan/gstack. Install the full gstack suite and its prerequisites; this workflow uses shared tools from the suite.",
+  "installs": null,
+  "install": "git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/gstack && cd ~/gstack && ./setup --host codex"
+ },
+ {
+  "slug": "ship",
+  "repo": "garrytan/gstack",
+  "url": "https://github.com/garrytan/gstack/blob/HEAD/ship/SKILL.md",
+  "name": "ship",
+  "title": "Ship",
+  "description": "Ship workflow and supporting guidance from garrytan/gstack. Install the full gstack suite and its prerequisites; this workflow uses shared tools from the suite.",
+  "installs": null,
+  "install": "git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/gstack && cd ~/gstack && ./setup --host codex"
+ },
+ {
+  "slug": "retro",
+  "repo": "garrytan/gstack",
+  "url": "https://github.com/garrytan/gstack/blob/HEAD/retro/SKILL.md",
+  "name": "retro",
+  "title": "Retro",
+  "description": "Retro workflow and supporting guidance from garrytan/gstack. Install the full gstack suite and its prerequisites; this workflow uses shared tools from the suite.",
+  "installs": null,
+  "install": "git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/gstack && cd ~/gstack && ./setup --host codex"
+ },
+ {
+  "slug": "cso",
+  "repo": "garrytan/gstack",
+  "url": "https://github.com/garrytan/gstack/blob/HEAD/cso/SKILL.md",
+  "name": "cso",
+  "title": "Cso",
+  "description": "Review infrastructure, dependencies, secrets, and deployment security. Install the full gstack suite and its prerequisites; this workflow uses shared tools from the suite.",
+  "installs": null,
+  "install": "git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/gstack && cd ~/gstack && ./setup --host codex"
+ },
+ {
+  "slug": "benchmark",
+  "repo": "garrytan/gstack",
+  "url": "https://github.com/garrytan/gstack/blob/HEAD/benchmark/SKILL.md",
+  "name": "benchmark",
+  "title": "Benchmark",
+  "description": "Benchmark workflow and supporting guidance from garrytan/gstack. Install the full gstack suite and its prerequisites; this workflow uses shared tools from the suite.",
+  "installs": null,
+  "install": "git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/gstack && cd ~/gstack && ./setup --host codex"
+ },
+ {
+  "slug": "document-release",
+  "repo": "garrytan/gstack",
+  "url": "https://github.com/garrytan/gstack/blob/HEAD/document-release/SKILL.md",
+  "name": "document-release",
+  "title": "Document Release",
+  "description": "Document Release workflow and supporting guidance from garrytan/gstack. Install the full gstack suite and its prerequisites; this workflow uses shared tools from the suite.",
+  "installs": null,
+  "install": "git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/gstack && cd ~/gstack && ./setup --host codex"
+ },
+ {
+  "slug": "context-save",
+  "repo": "garrytan/gstack",
+  "url": "https://github.com/garrytan/gstack/blob/HEAD/context-save/SKILL.md",
+  "name": "context-save",
+  "title": "Context Save",
+  "description": "Context Save workflow and supporting guidance from garrytan/gstack. Install the full gstack suite and its prerequisites; this workflow uses shared tools from the suite.",
+  "installs": null,
+  "install": "git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/gstack && cd ~/gstack && ./setup --host codex"
+ },
+ {
+  "slug": "context-restore",
+  "repo": "garrytan/gstack",
+  "url": "https://github.com/garrytan/gstack/blob/HEAD/context-restore/SKILL.md",
+  "name": "context-restore",
+  "title": "Context Restore",
+  "description": "Context Restore workflow and supporting guidance from garrytan/gstack. Install the full gstack suite and its prerequisites; this workflow uses shared tools from the suite.",
+  "installs": null,
+  "install": "git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/gstack && cd ~/gstack && ./setup --host codex"
+ },
+ {
+  "slug": "devex-review",
+  "repo": "garrytan/gstack",
+  "url": "https://github.com/garrytan/gstack/blob/HEAD/devex-review/SKILL.md",
+  "name": "devex-review",
+  "title": "Devex Review",
+  "description": "Devex Review workflow and supporting guidance from garrytan/gstack. Install the full gstack suite and its prerequisites; this workflow uses shared tools from the suite.",
+  "installs": null,
+  "install": "git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/gstack && cd ~/gstack && ./setup --host codex"
+ },
+ {
+  "slug": "autoplan",
+  "repo": "garrytan/gstack",
+  "url": "https://github.com/garrytan/gstack/blob/HEAD/autoplan/SKILL.md",
+  "name": "autoplan",
+  "title": "Autoplan",
+  "description": "Autoplan workflow and supporting guidance from garrytan/gstack. Install the full gstack suite and its prerequisites; this workflow uses shared tools from the suite.",
+  "installs": null,
+  "install": "git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/gstack && cd ~/gstack && ./setup --host codex"
+ },
+ {
+  "slug": "solana-dev",
+  "repo": "solana-foundation/solana-dev-skill",
+  "url": "https://github.com/solana-foundation/solana-dev-skill/blob/HEAD/skills/solana-dev/SKILL.md",
+  "name": "solana-dev",
+  "title": "Solana Dev",
+  "description": "Foundation-maintained guidance for building and testing Solana applications and programs.",
+  "installs": null,
+  "install": "npx skills add https://github.com/solana-foundation/solana-dev-skill --skill solana-dev"
+ },
+ {
+  "slug": "solana-mobile",
+  "repo": "solana-mobile/solana-mobile-skills",
+  "url": "https://github.com/solana-mobile/solana-mobile-skills/blob/HEAD/skills/solana-mobile/SKILL.md",
+  "name": "solana-mobile",
+  "title": "Solana Mobile",
+  "description": "Solana Mobile workflow and supporting guidance from solana-mobile/solana-mobile-skills.",
+  "installs": null,
+  "install": "npx skills add https://github.com/solana-mobile/solana-mobile-skills --skill solana-mobile"
+ },
+ {
+  "slug": "solana-mobile-wallet",
+  "repo": "solana-mobile/solana-mobile-skills",
+  "url": "https://github.com/solana-mobile/solana-mobile-skills/blob/HEAD/skills/solana-mobile-wallet/SKILL.md",
+  "name": "solana-mobile-wallet",
+  "title": "Solana Mobile Wallet",
+  "description": "Solana Mobile Wallet workflow and supporting guidance from solana-mobile/solana-mobile-skills.",
+  "installs": null,
+  "install": "npx skills add https://github.com/solana-mobile/solana-mobile-skills --skill solana-mobile-wallet"
+ },
+ {
+  "slug": "solana-mobile-publishing",
+  "repo": "solana-mobile/solana-mobile-skills",
+  "url": "https://github.com/solana-mobile/solana-mobile-skills/blob/HEAD/skills/solana-mobile-publishing/SKILL.md",
+  "name": "solana-mobile-publishing",
+  "title": "Solana Mobile Publishing",
+  "description": "Solana Mobile Publishing workflow and supporting guidance from solana-mobile/solana-mobile-skills.",
+  "installs": null,
+  "install": "npx skills add https://github.com/solana-mobile/solana-mobile-skills --skill solana-mobile-publishing"
+ },
+ {
+  "slug": "seeker-connect",
+  "repo": "solana-mobile/solana-mobile-skills",
+  "url": "https://github.com/solana-mobile/solana-mobile-skills/blob/HEAD/skills/seeker-connect/SKILL.md",
+  "name": "seeker-connect",
+  "title": "Seeker Connect",
+  "description": "Seeker Connect workflow and supporting guidance from solana-mobile/solana-mobile-skills.",
+  "installs": null,
+  "install": "npx skills add https://github.com/solana-mobile/solana-mobile-skills --skill seeker-connect"
+ },
+ {
+  "slug": "integration-privy",
+  "repo": "solana-mobile/solana-mobile-skills",
+  "url": "https://github.com/solana-mobile/solana-mobile-skills/blob/HEAD/skills/integration-privy/SKILL.md",
+  "name": "integration-privy",
+  "title": "Integration Privy",
+  "description": "Integration Privy workflow and supporting guidance from solana-mobile/solana-mobile-skills.",
+  "installs": null,
+  "install": "npx skills add https://github.com/solana-mobile/solana-mobile-skills --skill integration-privy"
+ },
+ {
+  "slug": "docx",
+  "repo": "anthropics/skills",
+  "url": "https://github.com/anthropics/skills/blob/HEAD/skills/docx/SKILL.md",
+  "name": "docx",
+  "title": "Docx",
+  "description": "Docx workflow and supporting guidance from anthropics/skills.",
+  "installs": null,
+  "install": "npx skills add https://github.com/anthropics/skills --skill docx"
+ },
+ {
+  "slug": "pdf",
+  "repo": "anthropics/skills",
+  "url": "https://github.com/anthropics/skills/blob/HEAD/skills/pdf/SKILL.md",
+  "name": "pdf",
+  "title": "Pdf",
+  "description": "Pdf workflow and supporting guidance from anthropics/skills.",
+  "installs": null,
+  "install": "npx skills add https://github.com/anthropics/skills --skill pdf"
+ },
+ {
+  "slug": "pptx",
+  "repo": "anthropics/skills",
+  "url": "https://github.com/anthropics/skills/blob/HEAD/skills/pptx/SKILL.md",
+  "name": "pptx",
+  "title": "Pptx",
+  "description": "Pptx workflow and supporting guidance from anthropics/skills.",
+  "installs": null,
+  "install": "npx skills add https://github.com/anthropics/skills --skill pptx"
+ },
+ {
+  "slug": "xlsx",
+  "repo": "anthropics/skills",
+  "url": "https://github.com/anthropics/skills/blob/HEAD/skills/xlsx/SKILL.md",
+  "name": "xlsx",
+  "title": "Xlsx",
+  "description": "Xlsx workflow and supporting guidance from anthropics/skills.",
+  "installs": null,
+  "install": "npx skills add https://github.com/anthropics/skills --skill xlsx"
+ },
+ {
+  "slug": "mcp-builder",
+  "repo": "anthropics/skills",
+  "url": "https://github.com/anthropics/skills/blob/HEAD/skills/mcp-builder/SKILL.md",
+  "name": "mcp-builder",
+  "title": "Mcp Builder",
+  "description": "Mcp Builder workflow and supporting guidance from anthropics/skills.",
+  "installs": null,
+  "install": "npx skills add https://github.com/anthropics/skills --skill mcp-builder"
+ },
+ {
+  "slug": "algorithmic-art",
+  "repo": "anthropics/skills",
+  "url": "https://github.com/anthropics/skills/blob/HEAD/skills/algorithmic-art/SKILL.md",
+  "name": "algorithmic-art",
+  "title": "Algorithmic Art",
+  "description": "Algorithmic Art workflow and supporting guidance from anthropics/skills.",
+  "installs": null,
+  "install": "npx skills add https://github.com/anthropics/skills --skill algorithmic-art"
+ },
+ {
+  "slug": "doc-coauthoring",
+  "repo": "anthropics/skills",
+  "url": "https://github.com/anthropics/skills/blob/HEAD/skills/doc-coauthoring/SKILL.md",
+  "name": "doc-coauthoring",
+  "title": "Doc Coauthoring",
+  "description": "Doc Coauthoring workflow and supporting guidance from anthropics/skills.",
+  "installs": null,
+  "install": "npx skills add https://github.com/anthropics/skills --skill doc-coauthoring"
+ },
+ {
+  "slug": "canvas-design",
+  "repo": "anthropics/skills",
+  "url": "https://github.com/anthropics/skills/blob/HEAD/skills/canvas-design/SKILL.md",
+  "name": "canvas-design",
+  "title": "Canvas Design",
+  "description": "Canvas Design workflow and supporting guidance from anthropics/skills.",
+  "installs": null,
+  "install": "npx skills add https://github.com/anthropics/skills --skill canvas-design"
+ },
+ {
+  "slug": "brainstorming",
+  "repo": "obra/superpowers",
+  "url": "https://github.com/obra/superpowers/blob/HEAD/skills/brainstorming/SKILL.md",
+  "name": "brainstorming",
+  "title": "Brainstorming",
+  "description": "Brainstorming workflow and supporting guidance from obra/superpowers.",
+  "installs": null,
+  "install": "npx skills add https://github.com/obra/superpowers --skill brainstorming"
+ },
+ {
+  "slug": "writing-plans",
+  "repo": "obra/superpowers",
+  "url": "https://github.com/obra/superpowers/blob/HEAD/skills/writing-plans/SKILL.md",
+  "name": "writing-plans",
+  "title": "Writing Plans",
+  "description": "Writing Plans workflow and supporting guidance from obra/superpowers.",
+  "installs": null,
+  "install": "npx skills add https://github.com/obra/superpowers --skill writing-plans"
+ },
+ {
+  "slug": "verification-before-completion",
+  "repo": "obra/superpowers",
+  "url": "https://github.com/obra/superpowers/blob/HEAD/skills/verification-before-completion/SKILL.md",
+  "name": "verification-before-completion",
+  "title": "Verification Before Completion",
+  "description": "Verification Before Completion workflow and supporting guidance from obra/superpowers.",
+  "installs": null,
+  "install": "npx skills add https://github.com/obra/superpowers --skill verification-before-completion"
+ },
+ {
+  "slug": "requesting-code-review",
+  "repo": "obra/superpowers",
+  "url": "https://github.com/obra/superpowers/blob/HEAD/skills/requesting-code-review/SKILL.md",
+  "name": "requesting-code-review",
+  "title": "Requesting Code Review",
+  "description": "Requesting Code Review workflow and supporting guidance from obra/superpowers.",
+  "installs": null,
+  "install": "npx skills add https://github.com/obra/superpowers --skill requesting-code-review"
+ },
+ {
+  "slug": "using-git-worktrees",
+  "repo": "obra/superpowers",
+  "url": "https://github.com/obra/superpowers/blob/HEAD/skills/using-git-worktrees/SKILL.md",
+  "name": "using-git-worktrees",
+  "title": "Using Git Worktrees",
+  "description": "Using Git Worktrees workflow and supporting guidance from obra/superpowers.",
+  "installs": null,
+  "install": "npx skills add https://github.com/obra/superpowers --skill using-git-worktrees"
+ },
+ {
+  "slug": "huggingface-datasets",
+  "repo": "huggingface/skills",
+  "url": "https://github.com/huggingface/skills/blob/HEAD/skills/huggingface-datasets/SKILL.md",
+  "name": "huggingface-datasets",
+  "title": "Huggingface Datasets",
+  "description": "Huggingface Datasets workflow and supporting guidance from huggingface/skills.",
+  "installs": null,
+  "install": "npx skills add https://github.com/huggingface/skills --skill huggingface-datasets"
+ },
+ {
+  "slug": "huggingface-gradio",
+  "repo": "huggingface/skills",
+  "url": "https://github.com/huggingface/skills/blob/HEAD/skills/huggingface-gradio/SKILL.md",
+  "name": "huggingface-gradio",
+  "title": "Huggingface Gradio",
+  "description": "Huggingface Gradio workflow and supporting guidance from huggingface/skills.",
+  "installs": null,
+  "install": "npx skills add https://github.com/huggingface/skills --skill huggingface-gradio"
+ },
+ {
+  "slug": "huggingface-local-models",
+  "repo": "huggingface/skills",
+  "url": "https://github.com/huggingface/skills/blob/HEAD/skills/huggingface-local-models/SKILL.md",
+  "name": "huggingface-local-models",
+  "title": "Huggingface Local Models",
+  "description": "Huggingface Local Models workflow and supporting guidance from huggingface/skills.",
+  "installs": null,
+  "install": "npx skills add https://github.com/huggingface/skills --skill huggingface-local-models"
+ },
+ {
+  "slug": "huggingface-spaces",
+  "repo": "huggingface/skills",
+  "url": "https://github.com/huggingface/skills/blob/HEAD/skills/huggingface-spaces/SKILL.md",
+  "name": "huggingface-spaces",
+  "title": "Huggingface Spaces",
+  "description": "Huggingface Spaces workflow and supporting guidance from huggingface/skills.",
+  "installs": null,
+  "install": "npx skills add https://github.com/huggingface/skills --skill huggingface-spaces"
+ },
+ {
+  "slug": "huggingface-llm-trainer",
+  "repo": "huggingface/skills",
+  "url": "https://github.com/huggingface/skills/blob/HEAD/skills/huggingface-llm-trainer/SKILL.md",
+  "name": "huggingface-llm-trainer",
+  "title": "Huggingface Llm Trainer",
+  "description": "Huggingface Llm Trainer workflow and supporting guidance from huggingface/skills.",
+  "installs": null,
+  "install": "npx skills add https://github.com/huggingface/skills --skill huggingface-llm-trainer"
+ },
+ {
+  "slug": "transformers-js",
+  "repo": "huggingface/skills",
+  "url": "https://github.com/huggingface/skills/blob/HEAD/skills/transformers-js/SKILL.md",
+  "name": "transformers-js",
+  "title": "Transformers Js",
+  "description": "Transformers Js workflow and supporting guidance from huggingface/skills.",
+  "installs": null,
+  "install": "npx skills add https://github.com/huggingface/skills --skill transformers-js"
+ },
+ {
+  "slug": "vercel-react-native-skills",
+  "repo": "vercel-labs/agent-skills",
+  "url": "https://github.com/vercel-labs/agent-skills/blob/HEAD/skills/react-native-skills/SKILL.md",
+  "name": "vercel-react-native-skills",
+  "title": "Vercel React Native Skills",
+  "description": "React Native and Expo best practices for building performant mobile apps. Use",
+  "installs": null,
+  "install": "npx skills add https://github.com/vercel-labs/agent-skills --skill vercel-react-native-skills"
+ },
+ {
+  "slug": "vercel-react-view-transitions",
+  "repo": "vercel-labs/agent-skills",
+  "url": "https://github.com/vercel-labs/agent-skills/blob/HEAD/skills/react-view-transitions/SKILL.md",
+  "name": "vercel-react-view-transitions",
+  "title": "Vercel React View Transitions",
+  "description": "Guide for implementing smooth, native-feeling animations using React",
+  "installs": null,
+  "install": "npx skills add https://github.com/vercel-labs/agent-skills --skill vercel-react-view-transitions"
+ },
+ {
+  "slug": "writing-guidelines",
+  "repo": "vercel-labs/agent-skills",
+  "url": "https://github.com/vercel-labs/agent-skills/blob/HEAD/skills/writing-guidelines/SKILL.md",
+  "name": "writing-guidelines",
+  "title": "Writing Guidelines",
+  "description": "Review docs/prose for Writing Guidelines compliance. Use when asked to",
+  "installs": null,
+  "install": "npx skills add https://github.com/vercel-labs/agent-skills --skill writing-guidelines"
+ },
+ {
+  "slug": "vercel-optimize",
+  "repo": "vercel-labs/agent-skills",
+  "url": "https://github.com/vercel-labs/agent-skills/blob/HEAD/skills/vercel-optimize/SKILL.md",
+  "name": "vercel-optimize",
+  "title": "Vercel Optimize",
+  "description": "Use for Vercel cost and performance optimization on deployed projects, especially Next.js, SvelteKit, Nuxt, and limited Astro apps. Collect Vercel metrics, usage, project config, and code scan results first; investigate only metric-backed candidates; produce ranked recommendations grounded in verified files and version-aware Vercel/framework docs. Trigger for Vercel bill reduction, slow or expensive routes, caching opportunities, Function Invocations, Build Minutes, Fast Data Transfer, Core Web Vitals, Bot Management, Fluid compute, or cost breakdown requests.",
+  "installs": null,
+  "install": "npx skills add https://github.com/vercel-labs/agent-skills --skill vercel-optimize"
+ },
+ {
+  "slug": "brand-guidelines",
+  "repo": "anthropics/skills",
+  "url": "https://github.com/anthropics/skills/blob/HEAD/skills/brand-guidelines/SKILL.md",
+  "name": "brand-guidelines",
+  "title": "Brand Guidelines",
+  "description": "Applies Anthropic",
+  "installs": null,
+  "install": "npx skills add https://github.com/anthropics/skills --skill brand-guidelines"
+ },
+ {
+  "slug": "internal-comms",
+  "repo": "anthropics/skills",
+  "url": "https://github.com/anthropics/skills/blob/HEAD/skills/internal-comms/SKILL.md",
+  "name": "internal-comms",
+  "title": "Internal Comms",
+  "description": "A set of resources to help me write all kinds of internal communications, using the formats that my company likes to use. Claude should use this skill whenever asked to write some sort of internal communications (status reports, leadership updates, 3P updates, company newsletters, FAQs, incident reports, project updates, etc.).",
+  "installs": null,
+  "install": "npx skills add https://github.com/anthropics/skills --skill internal-comms"
+ },
+ {
+  "slug": "theme-factory",
+  "repo": "anthropics/skills",
+  "url": "https://github.com/anthropics/skills/blob/HEAD/skills/theme-factory/SKILL.md",
+  "name": "theme-factory",
+  "title": "Theme Factory",
+  "description": "Toolkit for styling artifacts with a theme. These artifacts can be slides, docs, reportings, HTML landing pages, etc. There are 10 pre-set themes with colors/fonts that you can apply to any artifact that has been creating, or can generate a new theme on-the-fly.",
+  "installs": null,
+  "install": "npx skills add https://github.com/anthropics/skills --skill theme-factory"
+ },
+ {
+  "slug": "web-artifacts-builder",
+  "repo": "anthropics/skills",
+  "url": "https://github.com/anthropics/skills/blob/HEAD/skills/web-artifacts-builder/SKILL.md",
+  "name": "web-artifacts-builder",
+  "title": "Web Artifacts Builder",
+  "description": "Suite of tools for creating elaborate, multi-component claude.ai HTML artifacts using modern frontend web technologies (React, Tailwind CSS, shadcn/ui). Use for complex artifacts requiring state management, routing, or shadcn/ui components - not for simple single-file HTML/JSX artifacts.",
+  "installs": null,
+  "install": "npx skills add https://github.com/anthropics/skills --skill web-artifacts-builder"
+ },
+ {
+  "slug": "skill-creator",
+  "repo": "anthropics/skills",
+  "url": "https://github.com/anthropics/skills/blob/HEAD/skills/skill-creator/SKILL.md",
+  "name": "skill-creator",
+  "title": "Skill Creator",
+  "description": "Create new skills, modify and improve existing skills, and measure skill performance. Use when users want to create a skill from scratch, edit, or optimize an existing skill, run evals to test a skill, benchmark skill performance with variance analysis, or optimize a skill",
+  "installs": null,
+  "install": "npx skills add https://github.com/anthropics/skills --skill skill-creator"
+ },
+ {
+  "slug": "executing-plans",
+  "repo": "obra/superpowers",
+  "url": "https://github.com/obra/superpowers/blob/HEAD/skills/executing-plans/SKILL.md",
+  "name": "executing-plans",
+  "title": "Executing Plans",
+  "description": "Use when executing an implementation plan in the current session as the implementer yourself — your human partner chose inline execution, or no subagent tool is available",
+  "installs": null,
+  "install": "npx skills add https://github.com/obra/superpowers --skill executing-plans"
+ },
+ {
+  "slug": "receiving-code-review",
+  "repo": "obra/superpowers",
+  "url": "https://github.com/obra/superpowers/blob/HEAD/skills/receiving-code-review/SKILL.md",
+  "name": "receiving-code-review",
+  "title": "Receiving Code Review",
+  "description": "Use when receiving code review feedback, before implementing suggestions, especially if feedback seems unclear or technically questionable - requires technical rigor and verification, not performative agreement or blind implementation",
+  "installs": null,
+  "install": "npx skills add https://github.com/obra/superpowers --skill receiving-code-review"
+ },
+ {
+  "slug": "finishing-a-development-branch",
+  "repo": "obra/superpowers",
+  "url": "https://github.com/obra/superpowers/blob/HEAD/skills/finishing-a-development-branch/SKILL.md",
+  "name": "finishing-a-development-branch",
+  "title": "Finishing A Development Branch",
+  "description": "Use when implementation is complete, all tests pass, and you need to decide how to integrate the work",
+  "installs": null,
+  "install": "npx skills add https://github.com/obra/superpowers --skill finishing-a-development-branch"
+ },
+ {
+  "slug": "writing-skills",
+  "repo": "obra/superpowers",
+  "url": "https://github.com/obra/superpowers/blob/HEAD/skills/writing-skills/SKILL.md",
+  "name": "writing-skills",
+  "title": "Writing Skills",
+  "description": "Use when creating new skills, editing existing skills, or verifying skills work before deployment",
+  "installs": null,
+  "install": "npx skills add https://github.com/obra/superpowers --skill writing-skills"
+ },
+ {
+  "slug": "hf-cli",
+  "repo": "huggingface/skills",
+  "url": "https://github.com/huggingface/skills/blob/HEAD/skills/hf-cli/SKILL.md",
+  "name": "hf-cli",
+  "title": "Hf Cli",
+  "description": "Hugging Face Hub CLI (`hf`) for downloading, uploading, and managing models, datasets, spaces, buckets, repos, papers, jobs, and more on the Hugging Face Hub. Use when: handling authentication; managing local cache; managing Hugging Face Buckets; running or scheduling jobs on Hugging Face infrastructure; managing Hugging Face repos; discussions and pull requests; browsing models, datasets and spaces; reading, searching, or browsing academic papers; managing collections; querying datasets; configuring spaces; setting up webhooks; or deploying and managing HF Inference Endpoints. Make sure to use this skill whenever the user mentions",
+  "installs": null,
+  "install": "npx skills add https://github.com/huggingface/skills --skill hf-cli"
+ },
+ {
+  "slug": "huggingface-papers",
+  "repo": "huggingface/skills",
+  "url": "https://github.com/huggingface/skills/blob/HEAD/skills/huggingface-papers/SKILL.md",
+  "name": "huggingface-papers",
+  "title": "Huggingface Papers",
+  "description": "Look up and read Hugging Face paper pages in markdown, and use the papers API for structured metadata such as authors, linked models/datasets/spaces, Github repo and project page. Use when the user shares a Hugging Face paper page URL, an arXiv URL or ID, or asks to summarize, explain, or analyze an AI research paper.",
+  "installs": null,
+  "install": "npx skills add https://github.com/huggingface/skills --skill huggingface-papers"
+ },
+ {
+  "slug": "huggingface-community-evals",
+  "repo": "huggingface/skills",
+  "url": "https://github.com/huggingface/skills/blob/HEAD/skills/huggingface-community-evals/SKILL.md",
+  "name": "huggingface-community-evals",
+  "title": "Huggingface Community Evals",
+  "description": "Run evaluations for Hugging Face Hub models using inspect-ai and lighteval on local hardware. Use for backend selection, local GPU evals, and choosing between vLLM / Transformers / accelerate. Not for HF Jobs orchestration, model-card PRs, .eval_results publication, or community-evals automation.",
+  "installs": null,
+  "install": "npx skills add https://github.com/huggingface/skills --skill huggingface-community-evals"
+ },
+ {
+  "slug": "trl-training",
+  "repo": "huggingface/skills",
+  "url": "https://github.com/huggingface/skills/blob/HEAD/skills/trl-training/SKILL.md",
+  "name": "trl-training",
+  "title": "Trl Training",
+  "description": "Post-train LLMs with TRL (Transformers Reinforcement Learning) — SFT, DPO, GRPO, KTO, and reward-model training. Use when writing or debugging training code with the TRL Python API or the trl CLI.",
+  "installs": null,
+  "install": "npx skills add https://github.com/huggingface/skills --skill trl-training"
+ },
+ {
+  "slug": "seeker-domains",
+  "repo": "solana-mobile/solana-mobile-skills",
+  "url": "https://github.com/solana-mobile/solana-mobile-skills/blob/HEAD/skills/seeker-domains/SKILL.md",
+  "name": "seeker-domains",
+  "title": "Seeker Domains",
+  "description": "Resolve and display .skr domain names in Solana mobile apps, in both directions between names and wallet addresses. Use when showing .skr names instead of wallet addresses in profiles, friend lists, or transaction history, resolving a .skr domain to an address, reverse-looking-up an address to a domain, or validating .skr input.",
+  "installs": null,
+  "install": "npx skills add https://github.com/solana-mobile/solana-mobile-skills --skill seeker-domains"
+ },
+ {
+  "slug": "seeker-genesis-token",
+  "repo": "solana-mobile/solana-mobile-skills",
+  "url": "https://github.com/solana-mobile/solana-mobile-skills/blob/HEAD/skills/seeker-genesis-token/SKILL.md",
+  "name": "seeker-genesis-token",
+  "title": "Seeker Genesis Token",
+  "description": "Verify Seeker device ownership by checking for the Seeker Genesis Token (SGT) with Sign-in-with-Solana and server-side token verification. Use when gating content or rewards to Seeker owners, verifying a user holds an SGT, adding anti-Sybil checks to a Solana mobile app, or implementing one-claim-per-device logic.",
+  "installs": null,
+  "install": "npx skills add https://github.com/solana-mobile/solana-mobile-skills --skill seeker-genesis-token"
+ }
+]

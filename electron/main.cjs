@@ -1,0 +1,420 @@
+// Electron main process. Each desktop runs a host (its agents), and the person who
+// creates a space also runs the coordinator. The renderer talks to the coordinator
+// over HTTP like the phone does; this file only exposes device-local actions.
+const { app, BrowserWindow, ipcMain, dialog, globalShortcut, Menu, shell, screen } = require('electron');
+const path = require('node:path');
+const fs = require('node:fs/promises');
+const { pathToFileURL } = require('node:url');
+
+const PORT = 47821;
+let win;
+let config = { mode: null, url: null, lan: false, people: [], activePersonId: null, host: null };
+let coordinator = null;
+let host = null;
+const dataDir = () => path.join(app.getPath('userData'), 'larp');
+const configFile = () => path.join(dataDir(), 'config.json');
+const load = (file) => import(pathToFileURL(path.join(__dirname, '..', 'server', file)).href);
+
+async function saveConfig() {
+  await fs.mkdir(dataDir(), { recursive: true });
+  await fs.writeFile(configFile() + '.tmp', JSON.stringify(config, null, 2));
+  await fs.rename(configFile() + '.tmp', configFile());
+}
+
+function notify() {
+  if (win && !win.isDestroyed()) win.webContents.send('larp:changed');
+}
+
+async function startCoordinator() {
+  const { Coordinator } = await load('coordinator.mjs');
+  // Agent memory (Meko) and the optional YugabyteDB store are configured in .env.
+  const { loadEnv } = await load('meko.mjs');
+  const { connectFromEnv } = await load('db.mjs');
+  await loadEnv(path.join(__dirname, '..', '.env'));
+  await loadEnv(path.join(dataDir(), '.env'));
+  coordinator = new Coordinator({ dataDir: path.join(dataDir(), 'coordinator'), db: await connectFromEnv() });
+  await coordinator.init();
+  // Prefer the port this space has always used, then the default, then the next free one,
+  // so a second Larp (or anything else) holding a port doesn't stop this one from starting.
+  const saved = Number(new URL(config.url || `http://127.0.0.1:${PORT}`).port) || PORT;
+  const candidates = [...new Set([saved, PORT, ...Array.from({ length: 10 }, (_, i) => PORT + 1 + i)])];
+  // Windows can let two sockets bind the same port, with traffic going to the first one, so
+  // check whether anything already answers before claiming a port.
+  const answers = (port) => new Promise((resolve) => {
+    const socket = require('node:net').connect({ port, host: '127.0.0.1' });
+    const done = (result) => { socket.destroy(); resolve(result); };
+    socket.once('connect', () => done(true));
+    socket.once('error', () => done(false));
+    socket.setTimeout(400, () => done(false));
+  });
+  for (const port of candidates) {
+    if (await answers(port)) continue;
+    try {
+      await coordinator.listen({ port, host: config.lan ? '0.0.0.0' : '127.0.0.1', staticDir: path.join(__dirname, '..', 'dist') });
+      if (port !== saved) {
+        // Phones and teammates use the LAN address, which they'll need to re-enter if the port changed.
+        console.warn(`[larp] port ${saved} is busy; hosting on ${port}`);
+      }
+      config.url = `http://127.0.0.1:${port}`;
+      return;
+    } catch (error) {
+      if (error.code !== 'EADDRINUSE') throw error;
+    }
+  }
+  throw new Error(`No free port between ${PORT} and ${PORT + 10}. Close other Larp windows and try again.`);
+}
+
+async function startHost() {
+  if (!config.host?.token) return;
+  const { Host } = await load('host.mjs');
+  host = new Host({ url: config.url, token: config.host.token, dataDir: path.join(dataDir(), 'host'), onChange: notify });
+  await host.start();
+}
+
+async function postJson(url, route, body, token) {
+  const response = await fetch(`${url}/api/${route}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
+  return data;
+}
+
+function person(id) {
+  const found = config.people.find((p) => p.id === id);
+  if (!found) throw new Error('That person is not signed in on this device');
+  return found;
+}
+
+function view() {
+  return {
+    mode: config.mode,
+    url: config.url,
+    lan: config.lan,
+    splash: config.splash !== false,
+    urls: coordinator ? coordinator.urls() : config.url ? [config.url] : [],
+    people: config.people,
+    activePersonId: config.activePersonId,
+    host: host ? { ...host.status(), name: config.host?.name } : null,
+  };
+}
+
+const handlers = {
+  config: () => view(),
+
+  async createSpace({ spaceName, kind, name, lan }) {
+    if (config.mode) throw new Error('This device is already set up');
+    config.lan = Boolean(lan);
+    config.url = null;
+    await startCoordinator();
+    const { person: owner, token } = coordinator.createSpaceWithOwner({ spaceName, kind, ownerName: name });
+    const hostName = `${owner.name}'s ${process.platform === 'darwin' ? 'Mac' : 'laptop'}`;
+    const { host: h, token: hostToken } = coordinator.registerHost(owner.id, { name: hostName });
+    Object.assign(config, { mode: 'host', people: [{ id: owner.id, name: owner.name, token }], activePersonId: owner.id, host: { id: h.id, token: hostToken, name: hostName } });
+    await saveConfig();
+    await startHost();
+    return view();
+  },
+
+  async joinSpace({ url, code, name }) {
+    if (config.mode) throw new Error('This device is already set up');
+    const base = String(url || '').trim().replace(/\/$/, '');
+    if (!/^https?:\/\/[^\s/]+$/.test(base)) throw new Error('Enter the space address, like https://larp.example.com or http://192.168.1.20:47821');
+    const joined = await postJson(base, 'join', { code, name });
+    const hostName = `${joined.person.name}'s laptop`;
+    const registered = await postJson(base, 'hosts', { name: hostName }, joined.token);
+    Object.assign(config, { mode: 'join', url: base, people: [{ id: joined.person.id, name: joined.person.name, token: joined.token }], activePersonId: joined.person.id, host: { id: registered.host.id, token: registered.token, name: hostName } });
+    await saveConfig();
+    await startHost();
+    return view();
+  },
+
+  /** Another person signs in on this same device (a shared family laptop). */
+  async addPerson({ code, name }) {
+    const joined = await postJson(config.url, 'join', { code, name });
+    config.people.push({ id: joined.person.id, name: joined.person.name, token: joined.token });
+    config.activePersonId = joined.person.id;
+    await saveConfig();
+    return view();
+  },
+
+  async switchPerson({ id }) {
+    person(id);
+    config.activePersonId = id;
+    await saveConfig();
+    return view();
+  },
+
+  async addAgent({ personId, ...fields }) {
+    if (!host) throw new Error('This device has no host running');
+    const owner = person(personId);
+    return host.addAgent({ ownerToken: owner.token, ...fields });
+  },
+
+  async updateAgent({ agentId, patch }) {
+    if (!host) throw new Error('This device has no host running');
+    return host.updateAgent(agentId, patch);
+  },
+
+  async removeAgent({ agentId }) {
+    if (!host) throw new Error('This device has no host running');
+    await host.removeAgent(agentId);
+    return { ok: true };
+  },
+
+  async chooseFolder() {
+    const result = await dialog.showOpenDialog(win, { properties: ['openDirectory'] });
+    return result.canceled ? null : result.filePaths[0];
+  },
+
+  async setLan({ lan }) {
+    if (config.mode !== 'host') throw new Error('Only the device hosting the space can change this');
+    config.lan = Boolean(lan);
+    await saveConfig();
+    await host?.stop();
+    await coordinator.close();
+    await startCoordinator();
+    await startHost();
+    return view();
+  },
+
+  /** What agent runtimes this computer can run right now, for the Add agent page. */
+  async detectRuntimes() {
+    const { execFile } = require('node:child_process');
+    const os = require('node:os');
+    const exec = (cmd, args, shell = false) => new Promise((resolve) => {
+      execFile(cmd, args, { timeout: 8000, windowsHide: true, shell }, (error, stdout, stderr) => resolve({ ok: !error, out: `${stdout}${stderr}`.trim() }));
+    });
+    const reach = async (url) => {
+      try { const r = await fetch(url, { signal: AbortSignal.timeout(1500) }); return r.ok ? await r.json() : null; } catch { return null; }
+    };
+    const win = process.platform === 'win32';
+
+    const hermesPath = process.env.LARP_HERMES || (win && process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'hermes', 'hermes-agent', 'bin', 'hermes.exe') : 'hermes');
+    // Every check runs at once so the page fills in quickly.
+    const [claude, codexVersion, firstLogin, hermes, ollama, lmstudio] = await Promise.all([
+      exec('claude', ['--version']),
+      exec('codex', ['--version'], win),
+      exec('codex', ['login', 'status'], win),
+      exec(hermesPath, ['acp', '--check']),
+      reach('http://127.0.0.1:11434/api/tags'),
+      reach('http://127.0.0.1:1234/v1/models'),
+    ]);
+    let claudeNote = null;
+    try {
+      const settings = JSON.parse(await fs.readFile(path.join(os.homedir(), '.claude', 'settings.json'), 'utf8'));
+      if (settings.env?.ANTHROPIC_BASE_URL) claudeNote = 'Uses a custom endpoint from ~/.claude/settings.json; that provider’s account is billed.';
+    } catch { /* no settings file */ }
+
+    let codexLogin = firstLogin;
+    let codexNote = null;
+    if (/service_tier|unknown variant `default`/.test(codexLogin.out)) {
+      codexNote = 'Your ~/.codex/config.toml has service_tier = "default", which this Codex rejects. Larp works around it per task; removing that line fixes it for good.';
+      codexLogin = await exec('codex', ['-c', 'service_tier="fast"', 'login', 'status'], win);
+    }
+
+    return {
+      claude: { installed: claude.ok, detail: claude.ok ? claude.out.split('\n')[0] : 'Not found', note: claudeNote },
+      codex: {
+        installed: codexVersion.ok,
+        detail: codexVersion.ok ? `${codexVersion.out.split('\n').pop()} · ${/logged in/i.test(codexLogin.out) ? codexLogin.out.split('\n').pop() : 'not signed in'}` : 'Not found',
+        note: codexNote,
+      },
+      hermes: { installed: hermes.ok, detail: hermes.ok ? 'ACP ready' : 'Not found' },
+      openai: {
+        installed: Boolean(ollama || lmstudio),
+        detail: ollama ? `Ollama running · ${(ollama.models || []).length} models` : lmstudio ? 'LM Studio running' : 'No local server found (Ollama or LM Studio); an API key works too',
+        endpoint: ollama ? 'http://127.0.0.1:11434/v1' : lmstudio ? 'http://127.0.0.1:1234/v1' : null,
+        models: ollama ? (ollama.models || []).map((m) => m.name) : lmstudio ? (lmstudio.data || []).map((m) => m.id) : [],
+      },
+      scripted: { installed: true, detail: 'Built in' },
+    };
+  },
+
+  async setSplash({ enabled }) {
+    config.splash = Boolean(enabled);
+    await saveConfig();
+    return view();
+  },
+
+  async setTitleBar({ color, symbol }) {
+    const valid = (c) => typeof c === 'string' && /^#[0-9a-f]{3,8}$/i.test(c);
+    if (win && process.platform !== 'darwin' && valid(color) && valid(symbol)) win.setTitleBarOverlay({ color, symbolColor: symbol, height: 52 });
+    return { ok: true };
+  },
+
+  async openExternal({ url }) {
+    if (/^https?:\/\//.test(url)) await shell.openExternal(url);
+    return { ok: true };
+  },
+
+  // ---------- connected apps (Swasthya, Kosh): their data stays on this computer ----------
+
+  /** Known apps, whether they answer on this computer, and whether this device is connected. */
+  async appsList() {
+    config.apps ||= {};
+    return Promise.all(KNOWN_APPS.map(async (a) => {
+      const saved = config.apps[a.id];
+      const url = saved?.url || (await findApp(a)) || null;
+      const running = url ? await answers(`${url}/api/health`) : false;
+      return { id: a.id, name: a.name, kind: a.kind, url, running, connected: Boolean(saved?.token), connectedAt: saved?.connectedAt || null };
+    }));
+  },
+
+  /** Connect to an app running on this computer: it hands its token to local callers. */
+  async appsConnect({ id, url }) {
+    const known = KNOWN_APPS.find((a) => a.id === id);
+    if (!known) throw new Error('Unknown app');
+    const base = String(url || (await findApp(known)) || '').replace(/\/$/, '');
+    if (!base) throw new Error(`${known.name} isn't running on this computer. Start it, then connect.`);
+    if (!/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(base)) throw new Error('Only apps on this computer can be connected');
+    const { token } = await getJson(`${base}/api/session`);
+    await getJson(`${base}/api/summary`, token);   // proves the token works
+    config.apps ||= {};
+    config.apps[id] = { url: base, token, connectedAt: new Date().toISOString() };
+    await saveConfig();
+    return handlers.appsList();
+  },
+
+  async appsDisconnect({ id }) {
+    if (config.apps) delete config.apps[id];
+    await saveConfig();
+    return handlers.appsList();
+  },
+
+  /** Call a connected app's API from the main process (no CORS, token never reaches the page). */
+  async appsCall({ id, method = 'GET', path: route, body }) {
+    const app = config.apps?.[id];
+    if (!app) throw new Error('That app is not connected');
+    if (!/^[\w\-/?=&.%]+$/.test(route) || route.includes('..')) throw new Error('Bad path');
+    if (!['GET', 'POST', 'PATCH', 'DELETE'].includes(method)) throw new Error('Bad method');
+    const response = await fetch(`${app.url}/api/${route}`, {
+      method, headers: { Authorization: `Bearer ${app.token}`, 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(10000),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `${id} returned ${response.status}`);
+    return data;
+  },
+};
+
+// Apps Larp knows how to connect to, and where they usually run (dev server first, then `npm start`).
+const KNOWN_APPS = [
+  { id: 'swasthya', name: 'Swasthya', kind: 'Family health', ports: [5190, 5191] },
+  { id: 'kosh', name: 'Kosh', kind: 'Family finance', ports: [5200, 5201] },
+];
+async function answers(url) {
+  try { const r = await fetch(url, { signal: AbortSignal.timeout(900) }); return r.ok; } catch { return false; }
+}
+async function findApp(app) {
+  for (const port of app.ports) {
+    for (const hostName of ['127.0.0.1', 'localhost']) {
+      const base = `http://${hostName}:${port}`;
+      try {
+        const r = await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(900) });
+        const d = await r.json();
+        if (d.app === app.id) return base;
+      } catch { /* not here */ }
+    }
+  }
+  return null;
+}
+async function getJson(url, token) {
+  const r = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {}, signal: AbortSignal.timeout(5000) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || `Request failed (${r.status})`);
+  return d;
+}
+
+for (const [name, handler] of Object.entries(handlers)) {
+  ipcMain.handle(`larp:${name}`, async (_event, args) => {
+    try {
+      return await handler(args || {});
+    } catch (error) {
+      console.error(`[larp] ${name} failed:`, error.stack || error);
+      throw error;
+    }
+  });
+}
+
+app.setName('Larp');
+// A separate data folder lets several Larp instances run on one machine (testing, demos).
+if (process.env.LARP_DATA_DIR) app.setPath('userData', path.resolve(process.env.LARP_DATA_DIR));
+Menu.setApplicationMenu(null);
+
+/**
+ * The startup splash: a small centered card where the Larp mark assembles while services start.
+ * It closes once the app window is ready.
+ */
+function openSplash() {
+  if (config.splash === false || process.env.LARP_NO_SPLASH) return null;
+  const { workArea } = screen.getPrimaryDisplay();
+  const width = 380;
+  const height = 320;
+  const splash = new BrowserWindow({
+    width, height, x: Math.round(workArea.x + (workArea.width - width) / 2), y: Math.round(workArea.y + (workArea.height - height) / 2), frame: false, transparent: true, resizable: false, movable: false, focusable: false,
+    alwaysOnTop: true, skipTaskbar: true, hasShadow: false, show: false, backgroundColor: '#00000000',
+    webPreferences: { sandbox: true, contextIsolation: true },
+  });
+  splash.loadFile(path.join(__dirname, 'splash.html'));
+  splash.once('ready-to-show', () => splash.showInactive());
+  return splash;
+}
+
+function waitForTitle(window, title, timeout) {
+  return new Promise((resolve) => {
+    if (!window || window.isDestroyed()) return resolve();
+    const timer = setTimeout(resolve, timeout);
+    window.on('page-title-updated', (_e, t) => { if (t === title) { clearTimeout(timer); resolve(); } });
+  });
+}
+
+app.whenReady().then(async () => {
+  try {
+    config = { ...config, ...JSON.parse(await fs.readFile(configFile(), 'utf8')) };
+  } catch (error) {
+    if (error.code !== 'ENOENT') console.error('[larp] could not read config:', error.message);
+  }
+  const splash = openSplash();
+  const animationDone = waitForTitle(splash, 'ready', 7000);
+  const setStatus = (text) => splash && !splash.isDestroyed() && splash.webContents.executeJavaScript(`setStatus(${JSON.stringify(text)})`).catch(() => {});
+
+  try {
+    if (config.mode === 'host') { setStatus('starting coordinator'); await startCoordinator(); await saveConfig(); }
+    setStatus(config.host ? 'connecting your agents' : 'getting ready');
+    await startHost();
+  } catch (error) {
+    console.error('[larp] startup failed:', error.message);
+  }
+
+  win = new BrowserWindow({
+    width: 1440, height: 920, minWidth: 960, minHeight: 620, show: false,
+    backgroundColor: '#0f0f0f', title: 'Larp',
+    titleBarStyle: 'hidden',
+    titleBarOverlay: process.platform === 'darwin' ? undefined : { color: '#0f0f0f', symbolColor: '#a3a3a3', height: 52 },
+    icon: path.join(__dirname, '..', 'public', 'larp-icon.png'),
+    webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true },
+  });
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  win.webContents.on('will-navigate', (e) => e.preventDefault());
+  const windowReady = new Promise((resolve) => win.once('ready-to-show', resolve));
+  win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+  globalShortcut.register('CommandOrControl+Shift+Space', () => { win.show(); win.focus(); });
+
+  await Promise.all([windowReady, animationDone]);
+  win.show();
+  if (splash && !splash.isDestroyed()) {
+    splash.webContents.executeJavaScript('closeSplash()').catch(() => {});
+    await waitForTitle(splash, 'closed', 1500);
+    if (!splash.isDestroyed()) splash.destroy();
+  }
+});
+
+app.on('window-all-closed', () => app.quit());
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
+  host?.stop();
+  coordinator?.close();
+});

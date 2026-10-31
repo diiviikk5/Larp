@@ -1,0 +1,21 @@
+# One-click hosting of a Larp coordinator on Render (render.com > New > Blueprint).
+# Free web services sleep when idle and have no disk, so state lives in YugabyteDB.
+services:
+  - type: web
+    name: larp-coordinator
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: YUGABYTE_URL
+        sync: false
+      - key: YUGABYTE_CA_PEM
+        sync: false
+      - key: MEKO_API_KEY
+        sync: false
+      - key: LARP_TEAM
+        sync: false
+      - key: LARP_SETUP_CODE
+        generateValue: true
+      - key: LARP_SPACE_NAME
+        value: Build studio

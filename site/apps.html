@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#eeeae2" />
+<meta name="description" content="Apps that live inside a Larp home: Swasthya for family health, Kosh for family finance, and the tools built into Larp." />
+<title>Apps — Larp</title>
+<link rel="icon" href="./favicon.svg" />
+</head>
+<body class="skills-page">
+<nav class="snav">
+  <a class="logo" href="./">LARP</a>
+  <span class="snav-links"><a href="./">Home</a><a href="./skills.html">Skills</a><a href="./apps.html" aria-current="page">Apps</a></span>
+  <a href="./#download" class="snav-cta">Download Larp</a>
+</nav>
+
+<main class="dir">
+  <header class="dir-head">
+    <p class="dir-kicker">Larp apps</p>
+    <h1 class="dir-title"><span>Apps</span> <em>that live</em> in your Larp home</h1>
+    <p class="dir-lead">Each app runs on your own computer with its own private data, and connects to Larp so your family's agents can help, always asking first. Running ones play live below; click any to open it.</p>
+  </header>
+
+  <section class="apps-featured" id="featured"></section>
+
+  <header class="apps-sub">
+    <p class="dir-kicker">Built into Larp</p>
+    <p class="apps-sub-text">No install needed: these come with every Larp space.</p>
+  </header>
+  <ol class="apps-builtin" id="builtin"></ol>
+
+  <footer class="dir-foot">
+    <p>Want your app here? Serve a <code>/.well-known/larp-integration.json</code> manifest listing your endpoints and what each one shares, and Larp can connect to it. Swasthya and Kosh both do.</p>
+    <a class="logo-big" href="./">LARP</a>
+  </footer>
+</main>
+
+<dialog class="sheet" id="sheet" aria-labelledby="sheet-title"></dialog>
+<script type="module" src="/src/apps/page.ts"></script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+/* ======================================================================
+   Ocean mode: an ASCII sea (src/ocean/engine.ts) behind frosted glass.
+   ====================================================================== */
+html[data-preset=Ocean] {
+  --bg: transparent; --sidebar: rgba(240, 252, 252, 0.72); --surface: #ffffff; --surface-2: #f2f8f9;
+  --hover: rgba(8, 72, 96, 0.06); --active: rgba(8, 72, 96, 0.1);
+  --border: rgba(8, 72, 96, 0.1); --border-strong: rgba(8, 72, 96, 0.18); --overlay: rgba(6, 50, 72, 0.25);
+  --text: #0b2b3b; --text-2: #2f5566; --text-3: #5b8191;
+  --accent: #0b2b3b; --accent-hover: #04202d; --accent-text: #0a5f7a; --accent-soft: rgba(11, 43, 59, 0.08); --on-accent: #ffffff;
+  --good: #11875d; --good-soft: rgba(17, 135, 93, 0.12); --bad: #d03f4f; --bad-soft: rgba(208, 63, 79, 0.1);
+  --warn: #b26a00; --warn-soft: rgba(178, 106, 0, 0.1); --info: #1f6fae; --info-soft: rgba(31, 111, 174, 0.1);
+  --shadow-pop: 0 0 0 1px rgba(255, 255, 255, 0.6), 0 24px 60px -18px rgba(4, 60, 92, 0.45);
+  --shadow-card: 0 18px 50px -28px rgba(4, 60, 92, 0.45);
+  color-scheme: light;
+}
+.palette-ocean { background: linear-gradient(135deg, #7ff2de, #2db7cf 55%, #1673ad); }
+.palette-ocean i:first-child { background: #f4c94c; }
+.palette-ocean i:last-child { background: #e8487a; }
+
+html[data-preset=Ocean] body { background: #2ab0c9; }
+.ocean-sea { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  background: radial-gradient(120% 90% at 18% 6%, #8ff5df 0%, #52dccf 24%, #2fbbd0 52%, #1d93c2 78%, #146fac 100%); }
+.ocean-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* light falling through the surface, swaying slowly */
+.ocean-rays { position: absolute; inset: -30% -20%; opacity: 0.55; mix-blend-mode: soft-light; filter: blur(18px);
+  background: repeating-linear-gradient(115deg, transparent 0 7%, rgba(255, 255, 255, 0.55) 9%, transparent 13%, transparent 19%, rgba(255, 255, 255, 0.35) 21%, transparent 26%);
+  animation: ocean-rays 22s ease-in-out infinite alternate; }
+@keyframes ocean-rays { from { transform: translateX(-4%) rotate(0deg); } to { transform: translateX(5%) rotate(2deg); } }
+.ocean-glow { position: absolute; inset: 0; background: radial-gradient(60% 45% at 50% 42%, rgba(255, 255, 255, 0.28), transparent 70%); }
+
+.ocean-glass { background: rgba(255, 255, 255, 0.56); border: 1px solid rgba(255, 255, 255, 0.75);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35); backdrop-filter: blur(18px) saturate(1.35);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 22px 50px -24px rgba(4, 64, 96, 0.55); }
+
+.app.ocean { position: relative; background: transparent; }
+.app.ocean.ocean-on-home { grid-template-columns: minmax(0, 1fr); --titlebar: #27a9ca; --titlebar-symbol: #eaf9fb; }
+.app.ocean > .workspace { position: relative; z-index: 1; }
+.app.ocean.ocean-on-home .sidebar { position: fixed; z-index: 30; top: 10px; bottom: 10px; left: 10px; width: 264px; border: 1px solid rgba(255, 255, 255, 0.7); border-radius: 18px;
+  background: rgba(238, 252, 252, 0.7); -webkit-backdrop-filter: blur(22px) saturate(1.3); backdrop-filter: blur(22px) saturate(1.3);
+  box-shadow: 0 30px 70px -30px rgba(4, 60, 92, 0.6); transform: translateX(calc(-100% - 20px)); transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1); }
+.app.ocean.ocean-on-home.drawer-open .sidebar { transform: none; }
+.ocean-scrim { position: fixed; inset: 0; z-index: 25; background: rgba(6, 50, 72, 0.12); }
+.ocean-menu { position: fixed; z-index: 26; left: 14px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: #0b2b3b; transition: transform 0.25s, background 0.25s; }
+.ocean-menu:hover { background: rgba(255, 255, 255, 0.8); transform: translateY(-50%) scale(1.06); }
+
+.app.ocean.ocean-on-home .topbar { position: absolute; inset: 0 0 auto 0; z-index: 2; pointer-events: none; }
+.app.ocean.ocean-on-home .topbar > * { visibility: hidden; }
+/* Every page but home: the normal layout on frosted glass, the sea resting (paused) far behind it. */
+.app.ocean:not(.ocean-on-home) { --titlebar: #f2f9fa; --titlebar-symbol: #2f5566; }
+.app.ocean:not(.ocean-on-home) .sidebar { position: relative; z-index: 2; background: rgba(236, 248, 249, 0.86); border-right: 1px solid rgba(255, 255, 255, 0.8);
+  -webkit-backdrop-filter: blur(30px) saturate(1.2); backdrop-filter: blur(30px) saturate(1.2); }
+.app.ocean:not(.ocean-on-home) > .workspace { background: rgba(244, 251, 252, 0.9); -webkit-backdrop-filter: blur(34px) saturate(1.15); backdrop-filter: blur(34px) saturate(1.15); }
+.app.ocean:not(.ocean-on-home) .topbar { background: rgba(242, 249, 250, 0.96); border-bottom: 1px solid rgba(8, 72, 96, 0.08); }
+.app.ocean:not(.ocean-on-home) .card, .app.ocean:not(.ocean-on-home) .stat, .app.ocean:not(.ocean-on-home) .agent-card, .app.ocean:not(.ocean-on-home) .app-tile,
+.app.ocean:not(.ocean-on-home) .feed, .app.ocean:not(.ocean-on-home) .detail-side, .app.ocean:not(.ocean-on-home) .quick, .app.ocean:not(.ocean-on-home) .composer {
+  background: #ffffff; border-color: rgba(8, 72, 96, 0.1); box-shadow: 0 1px 2px rgba(4, 60, 92, 0.05), 0 12px 32px -22px rgba(4, 60, 92, 0.35); }
+.app.ocean .dropdown, .app.ocean .modal, .app.ocean .sheet, .app.ocean .palette { background: #fbfefe; }
+.app.ocean.ocean-on-home .card, .app.ocean.ocean-on-home .stat, .app.ocean .agent-card, .app.ocean .app-tile, .app.ocean .feed, .app.ocean .dropdown, .app.ocean .detail-side, .app.ocean .quick {
+  background: rgba(255, 255, 255, 0.58); border-color: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3); backdrop-filter: blur(16px) saturate(1.3); }
+.app.ocean .page, .app.ocean .chat, .app.ocean .detail { background: transparent; }
+
+/* the home: one question, one box */
+.ocean-home { position: relative; height: 100vh; display: grid; place-items: center; font-family: 'Manrope Variable', 'Manrope', var(--font); }
+.ocean-history { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 5; }
+.ocean-pill { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 9px; font-size: 12px; font-weight: 500; color: #0b2b3b; }
+.ocean-pill .caret { font-size: 9px; opacity: 0.6; }
+.ocean-pill:hover { background: rgba(255, 255, 255, 0.78); }
+.ocean-history-list { position: absolute; top: 36px; left: 50%; transform: translateX(-50%); width: 380px; max-height: 60vh; overflow: auto; padding: 6px; border-radius: 14px; display: grid; animation: ocean-pop 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
+.ocean-history-list button { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 9px; text-align: left; font-size: 13px; color: #0b2b3b; }
+.ocean-history-list button:hover { background: rgba(255, 255, 255, 0.7); }
+.ocean-history-list small { color: #5b8191; font-size: 11px; white-space: nowrap; }
+.ocean-history-list .ocean-all { justify-content: center; color: #0a5f7a; font-weight: 600; }
+.ocean-empty { padding: 14px; text-align: center; color: #5b8191; font-size: 13px; }
+@keyframes ocean-pop { from { opacity: 0; transform: translate(-50%, -6px) scale(0.98); } }
+
+.ocean-center { position: relative; width: min(640px, calc(100vw - 120px)); margin-top: -6vh; display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.ocean-halo { position: absolute; inset: -110px -160px; z-index: -1; pointer-events: none; -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px);
+  -webkit-mask-image: radial-gradient(closest-side, #000 35%, transparent 100%); mask-image: radial-gradient(closest-side, #000 35%, transparent 100%);
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.22), transparent); }
+.ocean-title { font-family: 'Manrope Variable', 'Manrope', var(--font); font-weight: 400; font-size: clamp(32px, 3.6vw, 46px); letter-spacing: -0.035em; color: #0b2433; line-height: 1.05;
+  text-shadow: 0 1px 30px rgba(255, 255, 255, 0.45); animation: ocean-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.ocean-box { width: 100%; border-radius: 14px; padding: 12px 12px 10px 16px; animation: ocean-rise 0.9s 0.08s cubic-bezier(0.16, 1, 0.3, 1) both; transition: box-shadow 0.3s, background 0.3s; }
+.ocean-box:focus-within { background: rgba(255, 255, 255, 0.62); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 24px 56px -24px rgba(4, 64, 96, 0.58); }
+@keyframes ocean-rise { from { opacity: 0; transform: translateY(14px); filter: blur(6px); } }
+.ocean-box textarea, .ocean-box textarea:focus { width: 100%; resize: none; border: 0; outline: none; box-shadow: none; padding: 0; border-radius: 0; background: transparent; font: 400 14.5px/1.5 'Manrope Variable', 'Manrope', var(--font); color: #0b2433; min-height: 44px; max-height: 220px; field-sizing: content; }
+.ocean-box textarea::placeholder { color: #557c8c; }
+.ocean-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.ocean-icon { width: 26px; height: 26px; padding: 0; border: 0; border-radius: 8px; display: grid; place-items: center; color: #2f5566; background: transparent; }
+.ocean-icon:hover { background: rgba(255, 255, 255, 0.7); color: #0b2b3b; }
+.ocean-agent { position: relative; }
+.ocean-chip { border: 0; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 9px 0 5px; border-radius: 8px; font-size: 12px; font-weight: 500; color: #0b2b3b; background: rgba(255, 255, 255, 0.45); }
+.ocean-chip:hover { background: rgba(255, 255, 255, 0.78); }
+.ocean-picker { position: absolute; bottom: 34px; left: 0; min-width: 240px; padding: 6px; border-radius: 12px; display: grid; z-index: 6; animation: ocean-rise 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
+.ocean-picker button { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 8px; font-size: 13px; color: #0b2b3b; text-align: left; }
+.ocean-picker button:hover { background: rgba(255, 255, 255, 0.7); }
+.ocean-picker small { color: #5b8191; font-size: 11px; }
+.ocean-hint { font: 400 10.5px/1 var(--mono); color: #4d7585; letter-spacing: 0.02em; display: inline-flex; align-items: center; gap: 5px; }
+.ocean-hint kbd { font: inherit; padding: 2px 4px; border-radius: 4px; background: rgba(255, 255, 255, 0.5); color: #2f5566; }
+.ocean-send { width: 26px; height: 26px; padding: 0; border: 0; border-radius: 8px; display: grid; place-items: center; background: rgba(11, 43, 59, 0.85); color: #fff; transition: transform 0.15s, background 0.2s, opacity 0.2s; }
+.ocean-send:disabled { background: rgba(11, 43, 59, 0.14); color: #4d7585; }
+.ocean-send:not(:disabled):hover { transform: scale(1.06); background: #0b2b3b; }
+.ocean-error { color: #b42f3f; font-size: 13px; }
+.ocean-cta { margin-top: -6px; animation: ocean-rise 0.9s 0.2s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@media (prefers-reduced-motion: reduce) { .ocean-rays { animation: none; } .ocean-title, .ocean-box, .ocean-cta { animation: none; } }

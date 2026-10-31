@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#eeeae2" />
+<meta name="description" content="Agent skills, chosen for Larp: design, motion, memory, planning, testing, security and more. Install them on the agents that run on your own machine." />
+<title>Skills — Larp</title>
+<link rel="icon" href="./favicon.svg" />
+</head>
+<body class="skills-page">
+<nav class="snav">
+  <a class="logo" href="./">LARP</a>
+  <span class="snav-links"><a href="./">Home</a><a href="./#download">Download</a><a href="./skills.html" aria-current="page">Skills · <span id="count">120</span></a><a href="./apps.html">Apps</a></span>
+  <a href="./#download" class="snav-cta">Download Larp</a>
+</nav>
+
+<main class="dir" id="directory">
+  <header class="dir-head">
+    <p class="dir-kicker">Skills marketplace</p>
+    <h1 class="dir-title"><span id="heading-count">120</span> <em>skills</em> for Larp agents</h1>
+    <p class="dir-lead">A skill is a small folder of craft an agent picks up when the work calls for it. Install any of these on the computer that runs your agent: Claude Code, Codex or a local model.</p>
+    <div class="dir-tools">
+      <label class="search"><span aria-hidden="true">⌕</span><input id="q" type="search" placeholder="Search skills" aria-label="Search skills" autocomplete="off" /><kbd>/</kbd></label>
+      <div class="sort" role="group" aria-label="Sort"><button data-sort="pick" aria-pressed="true">Our order</button><button data-sort="installs" aria-pressed="false">Most installed</button><button data-sort="name" aria-pressed="false">A–Z</button></div>
+    </div>
+    <div class="chips" id="chips" role="group" aria-label="Filter by craft"></div>
+  </header>
+  <ol class="grid" id="grid"></ol>
+  <p class="empty" id="empty" hidden>Nothing matches. Try another word.</p>
+  <footer class="dir-foot">
+    <p>Install with the open <a href="https://skills.sh" target="_blank" rel="noopener">skills</a> CLI, then any Larp agent on that machine can use them. Descriptions and install counts come from skills.sh; each skill belongs to its authors.</p>
+    <a class="logo-big" href="./">LARP</a>
+  </footer>
+</main>
+
+<dialog class="sheet" id="sheet" aria-labelledby="sheet-title"></dialog>
+<script type="module" src="/src/skills/page.ts"></script>
+</body>
+</html>

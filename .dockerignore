@@ -1,0 +1,10 @@
+node_modules
+dist
+release
+site
+archive
+work
+tmp
+test
+.env
+*.log
