@@ -12,7 +12,7 @@ export type Route =
   | { page: 'activity' }
   | { page: 'memory' }
   | { page: 'apps' }
-  | { page: 'app'; id: 'swasthya' | 'kosh' | 'citylines'; tab?: 'overview' | 'full' }
+  | { page: 'app'; id: 'swasthya' | 'kosh' | 'citylines' | 'eduspace' | 'studio'; tab?: 'overview' | 'full' }
   | { page: 'settings'; tab?: SettingsTab }
   | { page: 'plans'; id?: string }
   | { page: 'money' }

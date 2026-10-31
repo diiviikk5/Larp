@@ -1,6 +1,6 @@
 {
   "name": "larp",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
@@ -19,6 +19,7 @@
     "test:codex-profile": "node test/codex-profile.mjs",
     "meko:check": "node test/meko-check.mjs",
     "test:memory": "node test/memory.mjs",
+    "test:memory-live": "node test/memory-live.mjs",
     "test:sql": "node test/pg-standin.mjs",
     "db:check": "node test/db-check.mjs",
     "dist:win": "npm run build && electron-builder --win",

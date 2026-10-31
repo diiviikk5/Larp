@@ -8,7 +8,7 @@ We build with coding agents connected to Meko, and share decisions, skills and k
 1. **Before you start:** recall the build datapack for anything about the task (`context_search` in `larp`). Follow promoted decisions.
 2. **When you finish:** save a short summary of what changed and why (`memory_add` in `larp`).
 3. **Upload docs that change** (README, docs/*.md) to the knowledge base with `knowledgebase_upload_document`, so passages stay searchable. Upload a copy without backticks: Meko's indexer drops inline code. If the skills catalog or the apps contract changes, upload it to its own datapack (below).
-4. **Promote every decision the others must follow** (API contracts, schemas, datapack names, gotchas) with `memory_promote`. Only promoted rows reach the rest of the team. Start each decision with the name of the teammate who made it, for example "Divik: Larp agent datapacks are named <team>-agent-<name>-xxxx".
+4. **Promote every decision the others must follow** (API contracts, schemas, datapack names, gotchas) with `memory_promote`. Only promoted rows reach the rest of the team. Start each decision with the name of the teammate who made it, for example "Divik: Larp keeps all product memory in one datapack, <team>-team, one agent_id per agent".
 
 ## Datapacks
 
@@ -25,7 +25,7 @@ Larp's agents read the skills and apps datapacks before every task (as `<LARP_TE
 ## Never
 
 - Never put API keys, tokens or personal data in any datapack.
-- Never point Larp itself (`MEKO_API_KEY` in .env) at `larp`. The app creates its own datapacks per agent and per space (`<LARP_TEAM>-agent-…`, `<LARP_TEAM>-space-…`), so project knowledge and product data stay apart.
+- Never point Larp itself (`MEKO_API_KEY` in .env) at `larp`. The app keeps its own memory in one datapack, `<LARP_TEAM>-team` (an `agent_id` per agent and per space), so project knowledge and product data stay apart.
 
 ## Project
 

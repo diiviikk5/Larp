@@ -172,7 +172,8 @@ function SwarmGraph({ ctx, calls }: { ctx: Ctx; calls: MekoCall[] }) {
   const own = new Map<string, number>();
   for (const c of calls) {
     if (!c.agentId && c.kind !== 'promote') continue;
-    const target = c.toId || (spacePack && c.datapack === spacePack ? 'space' : null);
+    // Calls about the space's shared knowledge are marked; older logs (one datapack per agent) matched by name.
+    const target = c.toId || (c.space || (c.space === undefined && spacePack && c.datapack === spacePack) ? 'space' : null);
     const from = c.agentId || 'space';
     if (!target || target === from) { own.set(from, (own.get(from) || 0) + 1); continue; }
     const key = `${from}>${target}`;
