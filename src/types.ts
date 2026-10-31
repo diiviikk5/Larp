@@ -5,12 +5,13 @@ export type Host = { id: string; name: string; ownerId: string; online: boolean;
 export type Agent = {
   id: string; name: string; ownerId: string; hostId: string; runtime: string; model: string | null;
   spaceIds: string[]; repo: string | null; pal: string; online: boolean; busy: boolean;
+  repoId?: string | null; usesApps?: boolean;
 };
 
 export type LogLine = { at: string; kind: string; text: string };
 
 export type TaskStatus =
-  | 'awaiting_approval' | 'queued' | 'running' | 'needs_review' | 'revision_requested' | 'accepted'
+  | 'awaiting_approval' | 'queued' | 'running' | 'waiting' | 'needs_review' | 'revision_requested' | 'accepted'
   | 'applying' | 'applied' | 'apply_failed' | 'denied' | 'cancelled' | 'failed' | 'interrupted';
 
 export type Task = {
@@ -25,9 +26,19 @@ export type Task = {
   };
   applied?: { ok: boolean; branch: string | null; message: string };
   applyHostId?: string; createdAt: string; updatedAt: string;
+  /** Requests this task's agent sent to other agents, and their answers. */
+  asks?: AgentAsk[];
+  /** Set when this task is another agent's request: the asking task, and the agent that asked. */
+  parentId?: string; askedBy?: string; repoId?: string | null;
   context?: { status: 'pending' | 'ready' | 'off'; at: string; items: Recalled[]; saved?: number; quality?: string | null };
   /** The result's diff, kept as a Meko artifact; duplicateOf names an earlier task with the identical result. */
   proof?: { artifactId: string | null; hash: string | null; size: number | null; duplicateOf: string | null; at: string; check: boolean | null };
+};
+
+/** One agent asking another for help while working; the answer resumes the asking task. */
+export type AgentAsk = {
+  id: string; to: string; toId: string; text: string; childId: string; at: string; answered: boolean;
+  answer?: { ok: boolean; text: string; diff: string; files: string[]; at: string };
 };
 
 /** Something an agent recalled from Meko before working, and where it came from. */
@@ -76,11 +87,12 @@ export type State = {
   version: number; me: Person; phones: number; spaces: Space[]; people: Person[]; hosts: Host[]; agents: Agent[];
   tasks: Task[]; approvals: Approval[]; waitingOn: { id: string; spaceId: string; ownerId: string; taskId: string | null; title: string }[];
   plans: Plan[]; expenses: Expense[]; checklists: Checklist[]; events: LarpEvent[]; memory: MemoryView;
+  telegram?: { connected: boolean; botName: string | null; linked: boolean; linkedIds: string[]; keeper: boolean };
   settlements: Record<string, { balance: Record<string, number>; transfers: { from: string; to: string; amount: number }[] }>;
 };
 
 export type LocalAgent = {
-  runtime: string; model: string | null; repoPath: string | null; baseUrl: string | null; apiKeyEnv: string | null;
+  runtime: string; model: string | null; repoPath: string | null; baseUrl: string | null; apiKeyEnv: string | null; codexHome?: string | null; useApps?: boolean;
   private: { calendar: { day: string; title: string; from: string; to: string }[]; availability: Record<string, { from: string; to: string }[]>; budget: number | null };
   sharing: Record<string, 'auto' | 'ask' | 'never'>;
 };
@@ -94,7 +106,7 @@ export type DeviceConfig = {
 /** An app connected to this desktop (Swasthya, Kosh); its token stays in the main process. */
 export type ConnectedApp = { id: 'swasthya' | 'kosh'; name: string; kind: string; url: string | null; running: boolean; connected: boolean; connectedAt: string | null };
 
-export type RuntimeStatus = { installed: boolean; detail: string; note?: string | null; endpoint?: string | null; models?: string[] };
+export type RuntimeStatus = { installed: boolean; detail: string; note?: string | null; endpoint?: string | null; models?: string[]; modelNotes?: Record<string, string> };
 
 declare global {
   interface Window {
@@ -108,10 +120,15 @@ declare global {
       updateAgent(args: { agentId: string; patch: Record<string, unknown> }): Promise<LocalAgent>;
       removeAgent(args: { agentId: string }): Promise<unknown>;
       chooseFolder(): Promise<string | null>;
+      createDemoProject?(): Promise<string>;
+      updateStatus?(): Promise<{ version: string; ready: string | null }>;
+      installUpdate?(): Promise<unknown>;
+      onUpdate?(fn: (info: { version: string }) => void): () => void;
       setLan(args: { lan: boolean }): Promise<DeviceConfig>;
       setSplash(args: { enabled: boolean }): Promise<DeviceConfig>;
       setTitleBar?(args: { color: string; symbol: string }): Promise<unknown>;
       detectRuntimes?(): Promise<Record<string, RuntimeStatus>>;
+      codexProfile?(args: { action: 'status' | 'login'; own?: boolean }): Promise<{ dir: string | null; command: string; installed: boolean; signedIn: boolean; detail: string }>;
       openExternal(args: { url: string }): Promise<unknown>;
       appsList?(): Promise<ConnectedApp[]>;
       appsConnect?(args: { id: string; url?: string }): Promise<ConnectedApp[]>;

@@ -23,8 +23,8 @@ Private home data (calendars, budgets, availability) never goes to Meko. It stay
 
 | When | Meko tool | Where in the code |
 |---|---|---|
-| Before a task runs: the agent recalls its own memory and the space's knowledge | `memory_search` ×2 | `Memory.prepare`, `server/memory.mjs` |
-| Delegated task: the requester's agent recalls what it knows about the topic and writes a hand-off note into the working agent's datapack | `memory_search`, `memory_add` into another agent's datapack | `Memory.prepare` |
+| Before a task runs: the agent recalls its own memory and the space's knowledge | `context_search` ×2 (plus `knowledgebase_search` in the skills and apps libraries) | `Memory.prepare`, `server/memory.mjs` |
+| Delegated task: the requester's agent recalls what it knows about the topic and writes a hand-off note into the working agent's datapack | `context_search`, `memory_add` into another agent's datapack | `Memory.prepare` |
 | After a result: the exchange is saved and Meko extracts durable facts | `conversation_add_message` | `Memory.outcome` |
 | Reviewer asks for a change: the feedback is kept for that agent's future work | `memory_add` | `Memory.feedback` |
 | Delegated work accepted: the working agent hands the outcome back to the requester's agents | `memory_add` into another agent's datapack | `Memory.handBack` |

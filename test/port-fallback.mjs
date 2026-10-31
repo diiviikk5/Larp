@@ -7,7 +7,7 @@ import path from 'node:path';
 const blocker = http.createServer((_, res) => res.end('busy'));
 await new Promise((r) => blocker.listen(47821, '127.0.0.1', r));
 const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'larp-port-'));
-const env = { ...process.env, LARP_DATA_DIR: dir, LARP_NO_SPLASH: '1' };
+const env = { ...process.env, MEKO_API_KEY: '', LARP_DATA_DIR: dir, LARP_NO_SPLASH: '1' };
 delete env.ELECTRON_RUN_AS_NODE;
 const app = await electron.launch({ args: ['.'], env });
 app.process().stdout?.on('data', (d) => process.stdout.write('[main] ' + d));

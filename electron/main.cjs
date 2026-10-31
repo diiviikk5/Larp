@@ -11,8 +11,21 @@ let win;
 let config = { mode: null, url: null, lan: false, people: [], activePersonId: null, host: null };
 let coordinator = null;
 let host = null;
+let builtinApps = [];   // servers for the apps shipped inside Larp (Swasthya, Kosh)
 const dataDir = () => path.join(app.getPath('userData'), 'larp');
 const configFile = () => path.join(dataDir(), 'config.json');
+const codexProfileDir = () => path.join(dataDir(), 'codex-profile');
+/** The models Codex lists (from its own cache in ~/.codex), with Codex's description of each, for the model picker. */
+async function codexModels() {
+  try {
+    const home = process.env.CODEX_HOME || path.join(require('node:os').homedir(), '.codex');
+    const cache = JSON.parse(await fs.readFile(path.join(home, 'models_cache.json'), 'utf8'));
+    const list = (cache.models || cache.data || cache).filter((m) => m.slug && m.visibility !== 'hide');
+    return { models: list.map((m) => m.slug), modelNotes: Object.fromEntries(list.map((m) => [m.slug, m.description || ''])) };
+  } catch { return {}; }
+}
+// The Codex CLI to run: LARP_CODEX (a full path, for a copy installed elsewhere) or `codex` on the PATH.
+const codexBin = () => process.env.LARP_CODEX || 'codex';
 const load = (file) => import(pathToFileURL(path.join(__dirname, '..', 'server', file)).href);
 
 async function saveConfig() {
@@ -67,7 +80,7 @@ async function startCoordinator() {
 async function startHost() {
   if (!config.host?.token) return;
   const { Host } = await load('host.mjs');
-  host = new Host({ url: config.url, token: config.host.token, dataDir: path.join(dataDir(), 'host'), onChange: notify });
+  host = new Host({ url: config.url, token: config.host.token, dataDir: path.join(dataDir(), 'host'), onChange: notify, appContext: readApps });
   await host.start();
 }
 
@@ -147,21 +160,69 @@ const handlers = {
     return view();
   },
 
-  async addAgent({ personId, ...fields }) {
+  async addAgent({ personId, codexProfile, ...fields }) {
     if (!host) throw new Error('This device has no host running');
     const owner = person(personId);
-    return host.addAgent({ ownerToken: owner.token, ...fields });
+    return host.addAgent({ ownerToken: owner.token, ...fields, codexHome: codexProfile ? codexProfileDir() : null });
   },
 
   async updateAgent({ agentId, patch }) {
     if (!host) throw new Error('This device has no host running');
-    return host.updateAgent(agentId, patch);
+    const { codexProfile, ...rest } = patch;
+    if (codexProfile !== undefined) rest.codexHome = codexProfile ? codexProfileDir() : null;
+    return host.updateAgent(agentId, rest);
+  },
+
+  /**
+   * Larp's own Codex profile: a separate Codex sign-in (for example another ChatGPT plan) kept in Larp's
+   * data folder, so the computer's usual Codex login and ~/.codex stay untouched.
+   * With own: false it is the computer's usual Codex login instead.
+   * action 'status' reports whether it is signed in; 'login' opens a window running `codex login` for it.
+   */
+  async codexProfile({ action = 'status', own = true } = {}) {
+    const { execFile, spawn } = require('node:child_process');
+    const dir = own ? codexProfileDir() : null;
+    if (dir) await fs.mkdir(dir, { recursive: true });
+    const env = dir ? { ...process.env, CODEX_HOME: dir } : process.env;
+    const win = process.platform === 'win32';
+    const bin = codexBin();
+    const command = !dir ? `${bin} login` : win ? `set CODEX_HOME=${dir} && ${bin} login` : `CODEX_HOME='${dir}' ${bin} login`;
+    if (action === 'login') {
+      const title = dir ? 'Codex sign-in for Larp' : 'Codex sign-in';
+      if (win) spawn('cmd.exe', ['/c', 'start', title, 'cmd', '/k', `${codexBin()} login`], { env, detached: true, windowsHide: false }).unref();
+      else if (process.platform === 'darwin') spawn('osascript', ['-e', `tell application "Terminal" to do script ${JSON.stringify(command)}`], { detached: true }).unref();
+      return { dir, command, installed: true, signedIn: false, detail: 'Finish signing in in the window that opened, then check again.' };
+    }
+    const result = await new Promise((resolve) => {
+      execFile(codexBin(), ['login', 'status'], { env, timeout: 8000, windowsHide: true, shell: win }, (error, stdout, stderr) => resolve({ error, out: `${stdout}${stderr}`.trim() }));
+    });
+    const installed = !/not recognized|ENOENT|not found/i.test(`${result.out} ${result.error?.message || ''}`);
+    const signedIn = /logged in/i.test(result.out) && !/not logged in/i.test(result.out);
+    return { dir, command, installed, signedIn, detail: installed ? result.out.split('\n').find((l) => l.trim()) || 'Not signed in' : 'Codex isn’t installed on this computer' };
   },
 
   async removeAgent({ agentId }) {
     if (!host) throw new Error('This device has no host running');
     await host.removeAgent(agentId);
     return { ok: true };
+  },
+
+  /** Whether a downloaded update is waiting for a restart. */
+  async updateStatus() {
+    return { version: app.getVersion(), ready: updateReady };
+  },
+
+  /** Restart into the downloaded version. Spaces, agents and settings are kept. */
+  async installUpdate() {
+    if (!updater || !updateReady) throw new Error('No update is ready');
+    setImmediate(() => updater.quitAndInstall(true, true));
+    return { ok: true };
+  },
+
+  /** The shared demo project, in Documents/Larp. Identical on every computer, so agents can share it. */
+  async createDemoProject() {
+    const { createDemoProject } = await load('demo-project.mjs');
+    return createDemoProject(path.join(app.getPath('documents'), 'Larp'));
   },
 
   async chooseFolder() {
@@ -196,8 +257,8 @@ const handlers = {
     // Every check runs at once so the page fills in quickly.
     const [claude, codexVersion, firstLogin, hermes, ollama, lmstudio] = await Promise.all([
       exec('claude', ['--version']),
-      exec('codex', ['--version'], win),
-      exec('codex', ['login', 'status'], win),
+      exec(codexBin(), ['--version'], win),
+      exec(codexBin(), ['login', 'status'], win),
       exec(hermesPath, ['acp', '--check']),
       reach('http://127.0.0.1:11434/api/tags'),
       reach('http://127.0.0.1:1234/v1/models'),
@@ -212,7 +273,7 @@ const handlers = {
     let codexNote = null;
     if (/service_tier|unknown variant `default`/.test(codexLogin.out)) {
       codexNote = 'Your ~/.codex/config.toml has service_tier = "default", which this Codex rejects. Larp works around it per task; removing that line fixes it for good.';
-      codexLogin = await exec('codex', ['-c', 'service_tier="fast"', 'login', 'status'], win);
+      codexLogin = await exec(codexBin(), ['-c', 'service_tier="fast"', 'login', 'status'], win);
     }
 
     return {
@@ -221,6 +282,7 @@ const handlers = {
         installed: codexVersion.ok,
         detail: codexVersion.ok ? `${codexVersion.out.split('\n').pop()} · ${/logged in/i.test(codexLogin.out) ? codexLogin.out.split('\n').pop() : 'not signed in'}` : 'Not found',
         note: codexNote,
+        ...(await codexModels()),
       },
       hermes: { installed: hermes.ok, detail: hermes.ok ? 'ACP ready' : 'Not found' },
       openai: {
@@ -300,10 +362,69 @@ const handlers = {
   },
 };
 
+/**
+ * What an agent may read from its owner's connected apps: a compact summary of each, fetched on this
+ * computer just before the agent runs. Apps that aren't connected or running are skipped.
+ */
+async function readApps() {
+  const reads = { swasthya: ['summary', 'appointments'], kosh: ['summary', 'goals'] };
+  const out = [];
+  for (const app of KNOWN_APPS) {
+    if (!config.apps?.[app.id]) continue;
+    const parts = [];
+    for (const route of reads[app.id] || ['summary']) {
+      try { parts.push(`${route}: ${JSON.stringify(await handlers.appsCall({ id: app.id, path: route }))}`); } catch { /* not running right now */ }
+    }
+    if (parts.length) out.push({ name: app.name, kind: app.kind, text: parts.join('\n').slice(0, 6000) });
+  }
+  return out;
+}
+
+// ---------- updates ----------
+// Installed copies check the website for a newer Larp at start and every 4 hours, download it in the
+// background, and offer a restart. LARP_UPDATE_URL points the check somewhere else (for testing).
+let updateReady = null;
+let updater = null;
+function startUpdates() {
+  if (!app.isPackaged && !process.env.LARP_UPDATE_URL) return;
+  try {
+    ({ autoUpdater: updater } = require('electron-updater'));
+  } catch (error) {
+    console.error('[larp] updates unavailable:', error.message);
+    return;
+  }
+  if (process.env.LARP_UPDATE_URL) {
+    updater.setFeedURL({ provider: 'generic', url: process.env.LARP_UPDATE_URL });
+    updater.forceDevUpdateConfig = !app.isPackaged;
+  }
+  updater.autoDownload = true;
+  updater.autoInstallOnAppQuit = true;
+  updater.on('update-available', (info) => console.log(`[larp] update ${info.version} found; downloading`));
+  updater.on('update-downloaded', (info) => {
+    updateReady = info.version;
+    if (win && !win.isDestroyed()) win.webContents.send('larp:update', { version: info.version });
+  });
+  updater.on('error', (error) => console.error('[larp] update check:', error.message));
+  const check = () => updater.checkForUpdates().catch(() => {});
+  check();
+  setInterval(check, 4 * 3600_000);
+}
+
+/** Start Swasthya and Kosh from inside Larp (unless already running), then connect any not yet connected. */
+async function startApps() {
+  const { startBuiltinApps } = await load('builtin-apps.mjs');
+  builtinApps = await startBuiltinApps({ appsDir: path.join(__dirname, '..', 'apps'), dataDir: path.join(dataDir(), 'apps') });
+  for (const app of await handlers.appsList()) {
+    if (app.running && !app.connected) await handlers.appsConnect({ id: app.id }).catch((error) => console.error(`[larp] connect ${app.id}:`, error.message));
+  }
+  notify();
+}
+
 // Apps Larp knows how to connect to, and where they usually run (dev server first, then `npm start`).
+const APP_PORT_OFFSET = Number(process.env.LARP_APPS_PORT_OFFSET) || 0;
 const KNOWN_APPS = [
-  { id: 'swasthya', name: 'Swasthya', kind: 'Family health', ports: [5190, 5191] },
-  { id: 'kosh', name: 'Kosh', kind: 'Family finance', ports: [5200, 5201] },
+  { id: 'swasthya', name: 'Swasthya', kind: 'Family health', ports: [5190, 5191].map((p) => p + APP_PORT_OFFSET) },
+  { id: 'kosh', name: 'Kosh', kind: 'Family finance', ports: [5200, 5201].map((p) => p + APP_PORT_OFFSET) },
 ];
 async function answers(url) {
   try { const r = await fetch(url, { signal: AbortSignal.timeout(900) }); return r.ok; } catch { return false; }
@@ -382,12 +503,18 @@ app.whenReady().then(async () => {
   const setStatus = (text) => splash && !splash.isDestroyed() && splash.webContents.executeJavaScript(`setStatus(${JSON.stringify(text)})`).catch(() => {});
 
   try {
+    // Settings in .env (the Codex to run, Meko, YugabyteDB) apply to every computer, hosting or joined.
+    const { loadEnv } = await load('meko.mjs');
+    await loadEnv(path.join(__dirname, '..', '.env'));
+    await loadEnv(path.join(dataDir(), '.env'));
     if (config.mode === 'host') { setStatus('starting coordinator'); await startCoordinator(); await saveConfig(); }
     setStatus(config.host ? 'connecting your agents' : 'getting ready');
     await startHost();
   } catch (error) {
     console.error('[larp] startup failed:', error.message);
   }
+  // The family apps that ship with Larp start in the background and connect themselves.
+  startApps().catch((error) => console.error('[larp] apps:', error.message));
 
   win = new BrowserWindow({
     width: 1440, height: 920, minWidth: 960, minHeight: 620, show: false,
@@ -401,6 +528,7 @@ app.whenReady().then(async () => {
   win.webContents.on('will-navigate', (e) => e.preventDefault());
   const windowReady = new Promise((resolve) => win.once('ready-to-show', resolve));
   win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+  startUpdates();
   globalShortcut.register('CommandOrControl+Shift+Space', () => { win.show(); win.focus(); });
 
   await Promise.all([windowReady, animationDone]);
@@ -415,6 +543,7 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => app.quit());
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
+  for (const server of builtinApps) server.close();
   host?.stop();
   coordinator?.close();
 });

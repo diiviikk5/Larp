@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Bot, Folder, Lock, Plus, Trash2 } from 'lucide-react';
 import type { Ctx } from '../route';
 import { confirmDialog, toast } from '../feedback';
@@ -143,21 +143,64 @@ export function AgentDetail({ ctx, id }: { ctx: Ctx; id: string }) {
   );
 }
 
+/**
+ * Which Codex sign-in an agent uses: the computer's usual one, or Larp's own Codex profile (a separate
+ * sign-in, for example another ChatGPT plan, kept in Larp's data folder so ~/.codex is never touched).
+ */
+function CodexSignIn({ own, setOwn }: { own: boolean; setOwn: (on: boolean) => void }) {
+  const [status, setStatus] = useState<{ installed: boolean; signedIn: boolean; detail: string; command: string } | null>(null);
+  const action = useAction();
+  // Only the answer for the option shown counts: switching options can leave an older check still running.
+  const current = useRef(own);
+  current.current = own;
+  const check = () => action.run(async () => {
+    const asked = own;
+    const result = await window.larp!.codexProfile!({ action: 'status', own: asked });
+    if (current.current === asked) setStatus(result);
+  });
+  useEffect(() => { setStatus(null); if (window.larp?.codexProfile) check(); }, [own]);
+  return (
+    <Field label="Codex sign-in" hint="Which ChatGPT account this agent's Codex uses. Larp's own profile is a separate sign-in that leaves your usual Codex login alone.">
+      <div className="segmented">
+        <button aria-pressed={!own} onClick={() => setOwn(false)}>This computer's Codex login</button>
+        <button aria-pressed={own} onClick={() => setOwn(true)}>Larp's own Codex profile</button>
+      </div>
+      <div className="codex-profile">
+        <p className={'runtime-detail ' + (status?.signedIn ? 'ok' : 'missing')}>{!status ? 'Checking…' : status.signedIn ? status.detail : !status.installed ? status.detail : 'Not signed in yet'}</p>
+        {status && !status.installed ? (
+          <p className="field-hint">Install it once (needs Node.js from nodejs.org), then press Check again: <code className="mono">npm install -g @openai/codex</code></p>
+        ) : status && !status.signedIn && (
+          <p className="field-hint">Press Sign in and log in with the ChatGPT account you want in the window that opens. If no window opens, run <code className="mono">{status.command}</code> in a terminal.</p>
+        )}
+        <div className="row">
+          {status?.installed !== false && !status?.signedIn && <button className="btn btn-sm" disabled={action.busy} onClick={() => action.run(async () => setStatus(await window.larp!.codexProfile!({ action: 'login', own })))}>Sign in…</button>}
+          <button className="btn btn-ghost btn-sm" disabled={action.busy} onClick={check}>Check again</button>
+        </div>
+        <ErrorText error={action.error} />
+      </div>
+    </Field>
+  );
+}
+
 function AgentConfig({ ctx, agent, local }: { ctx: Ctx; agent: Agent; local: LocalAgent }) {
   const [runtime, setRuntime] = useState(local.runtime);
   const [model, setModel] = useState(local.model || '');
+  const [ownCodex, setOwnCodex] = useState(Boolean(local.codexHome));
+  const [useApps, setUseApps] = useState(Boolean(local.useApps));
   const action = useAction();
   const [saved, setSaved] = useState(false);
-  const dirty = runtime !== local.runtime || model !== (local.model || '');
+  const dirty = runtime !== local.runtime || model !== (local.model || '') || ownCodex !== Boolean(local.codexHome) || useApps !== Boolean(local.useApps);
   return (
     <Card title="Configuration">
       <div className="form">
         <Field label="Runtime"><select value={runtime} onChange={(e) => setRuntime(e.target.value)}>{RUNTIMES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}</select></Field>
         <Field label="Model" hint="Leave empty for the runtime's default."><input value={model} placeholder="default" onChange={(e) => setModel(e.target.value)} /></Field>
+        {runtime === 'codex' && <CodexSignIn own={ownCodex} setOwn={setOwnCodex} />}
+        <label className="check-row bare"><input type="checkbox" checked={useApps} onChange={(e) => setUseApps(e.target.checked)} /><span className="grow"><strong>Can read my apps</strong><small>Before each task, it gets a summary from your connected Swasthya and Kosh, on this computer. Others' requests to it say so when you approve them.</small></span></label>
         <Field label="Repository on this computer"><p className="mono small">{local.repoPath || 'None'}</p></Field>
         <div className="row-end">
           {saved && !dirty && <span className="good small">Saved</span>}
-          <button className="btn btn-primary btn-sm" disabled={!dirty || action.busy} onClick={async () => { if (await action.run(() => window.larp!.updateAgent({ agentId: agent.id, patch: { runtime, model: model.trim() || null } }))) { setSaved(true); ctx.reloadDevice(); } }}>Save</button>
+          <button className="btn btn-primary btn-sm" disabled={!dirty || action.busy} onClick={async () => { if (await action.run(() => window.larp!.updateAgent({ agentId: agent.id, patch: { runtime, model: model.trim() || null, codexProfile: runtime === 'codex' && ownCodex, useApps } }))) { setSaved(true); ctx.reloadDevice(); } }}>Save</button>
         </div>
         <ErrorText error={action.error} />
       </div>
@@ -226,10 +269,15 @@ export function AgentNew({ ctx }: { ctx: Ctx }) {
   const [repoPath, setRepoPath] = useState('');
   const [baseUrl, setBaseUrl] = useState('http://127.0.0.1:11434/v1');
   const [apiKeyEnv, setApiKeyEnv] = useState('');
+  const [ownCodex, setOwnCodex] = useState(false);
+  const [useApps, setUseApps] = useState(true);
   const mySpaces = state.spaces.filter((s) => s.memberIds.includes(personId));
   const [spaceIds, setSpaceIds] = useState<string[]>([ctx.space.id]);
   const action = useAction();
   const rt = RUNTIMES.find((r) => r.id === runtime)!;
+  // Home spaces don't do code, so they never ask for a repository.
+  const homeOnly = spaceIds.length > 0 && spaceIds.every((id) => mySpaces.find((sp) => sp.id === id)?.kind === 'home');
+  const first = people.length > 1 ? 2 : 1;
   const [detected, setDetected] = useState<Record<string, RuntimeStatus> | null>(null);
   useEffect(() => {
     window.larp?.detectRuntimes?.().then((found) => {
@@ -244,9 +292,11 @@ export function AgentNew({ ctx }: { ctx: Ctx }) {
 
   const submit = () => action.run(async () => {
     const agent = await window.larp!.addAgent({
-      personId, name, runtime, model: model.trim() || null, repoPath: repoPath || null,
+      personId, name, runtime, model: model.trim() || null, repoPath: homeOnly ? null : repoPath || null,
       spaceIds: spaceIds.filter((id) => mySpaces.some((s) => s.id === id)),
       baseUrl: runtime === 'openai' ? baseUrl : null, apiKeyEnv: runtime === 'openai' ? apiKeyEnv || null : null,
+      codexProfile: runtime === 'codex' && ownCodex,
+      useApps: runtime !== 'scripted' && useApps,
     });
     ctx.reloadDevice();
     await ctx.larp.refresh();
@@ -292,27 +342,43 @@ export function AgentNew({ ctx }: { ctx: Ctx }) {
             {runtime === 'openai' && !!status?.models?.length && (
               <div className="model-chips">{status.models.slice(0, 8).map((m) => <button key={m} className={'chip' + (model === m ? ' on' : '')} onClick={() => setModel(m)}>{m}</button>)}</div>
             )}
+            {runtime === 'codex' && !!status?.models?.length && (
+              <div className="model-chips" aria-label="Codex models">
+                {status.models.slice(0, 9).map((m) => (
+                  <button key={m} className={'chip' + (model === m ? ' on' : '')} title={status.modelNotes?.[m]} onClick={() => setModel(model === m ? '' : m)}>
+                    {m}{/affordable|efficient/i.test(status.modelNotes?.[m] || '') ? ' · cheaper' : ''}
+                  </button>
+                ))}
+              </div>
+            )}
             {runtime === 'openai' && (
               <div className="form two-col">
                 <Field label="Endpoint" htmlFor="base-url"><input id="base-url" className="mono" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} /></Field>
                 <Field label="API key variable" htmlFor="key-env" hint="Name of an environment variable. Leave empty for Ollama."><input id="key-env" className="mono" placeholder="OPENROUTER_API_KEY" value={apiKeyEnv} onChange={(e) => setApiKeyEnv(e.target.value.replace(/[^A-Z0-9_]/gi, ''))} /></Field>
               </div>
             )}
+            {runtime === 'codex' && <CodexSignIn own={ownCodex} setOwn={setOwnCodex} />}
+            {runtime !== 'scripted' && (
+              <label className="check-row bare"><input type="checkbox" checked={useApps} onChange={(e) => setUseApps(e.target.checked)} /><span className="grow"><strong>Can read my apps</strong><small>Before each task it gets a summary from your Swasthya and Kosh, read on this computer. Requests from others say so when you approve them.</small></span></label>
+            )}
             {runtime !== 'scripted' && (
               <Field label="Model" htmlFor="model" hint="Optional. Leave empty to use the runtime's default."><input id="model" className="mono" placeholder={runtime === 'openai' ? 'qwen2.5-coder:7b' : 'default'} value={model} onChange={(e) => setModel(e.target.value)} /></Field>
             )}
           </div>
         </section>
-        <section className="form-step">
-          <div className="step-num">{people.length > 1 ? 4 : 3}</div>
-          <div className="grow"><h2>Repository</h2><p>For code tasks. Each task gets its own git worktree and branch, so your working copy is never touched.</p>
+        {!homeOnly && <section className="form-step">
+          <div className="step-num">{first + 2}</div>
+          <div className="grow"><h2>Repository <span className="faint small">optional</span></h2><p>Only for code tasks. Each task gets its own git worktree and branch, so your working copy is never touched. Skip it for plans, money and care.</p>
             <button className="folder-pick" onClick={async () => { const p = await window.larp!.chooseFolder(); if (p) setRepoPath(p); }}>
               <Folder size={15} /><span className="grow mono">{repoPath || 'Choose a git repository…'}</span>{repoPath && <span className="faint small">Change</span>}
             </button>
+            {window.larp?.createDemoProject && (
+              <p className="field-hint">Trying Larp with a friend? <button className="link-btn" disabled={action.busy} onClick={() => action.run(async () => setRepoPath(await window.larp!.createDemoProject!()))}>Use the demo project</button>: a small family-expenses library. Everyone who picks it gets the same repo, so your agents can work on it together.</p>
+            )}
           </div>
-        </section>
+        </section>}
         <section className="form-step">
-          <div className="step-num">{people.length > 1 ? 5 : 4}</div>
+          <div className="step-num">{first + (homeOnly ? 2 : 3)}</div>
           <div className="grow"><h2>Spaces</h2><p>Where this agent can receive tasks and answer questions.</p>
             <div className="check-list">
               {mySpaces.map((s) => (

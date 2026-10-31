@@ -1,13 +1,19 @@
 node_modules/
-dist/
+/dist/
+site/dist/
 .npm-cache/
 work/
 archive/
-release/
 .env
-.env.*
-!.env.example
-.vercel/
-.claude/
-*.tsbuildinfo
+release/
 site/public/downloads/
+
+# Local and build outputs
+*.tsbuildinfo
+tui/*.exe
+tui/larp-tui
+site/.vercel/
+site/work/
+yugabyte-ca.crt
+.claude/
+tmp/
