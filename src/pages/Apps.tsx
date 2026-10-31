@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, ArrowLeft, CalendarClock, CarFront, Check, ExternalLink, HeartPulse, Link2, Pill, ShieldPlus, Unplug, Wallet, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, BookOpen, CalendarClock, CarFront, Check, ExternalLink, HeartPulse, Link2, Pill, ShieldPlus, Unplug, Wallet, X } from 'lucide-react';
 import type { Ctx } from '../route';
 import type { ConnectedApp } from '../types';
 import { Card, EmptyState, ErrorText, PageHeader, Stat, Tag, timeAgo, useAction } from '../ui';
@@ -33,6 +33,11 @@ export function AppsPage({ ctx }: { ctx: Ctx }) {
     <div className="page">
       <PageHeader title="Apps" subtitle="Family apps running on this computer, built into Larp. Their data stays here; Larp's agents still ask before sharing anything." />
       <div className="apps-grid">
+        <section className="app-tile connected" style={{ ['--app' as string]: '#bdebd6' }}>
+          <div className="app-tile-head"><span className="app-tile-icon"><BookOpen size={18} /></span><div className="grow"><h2>EduSpace</h2><p>Learning workspace</p></div><span className="presence-text good">● ready</span></div>
+          <p className="app-tile-line">Courses, assignments, study sessions and a notebook for your next idea.</p>
+          <div className="app-tile-foot"><button className="btn btn-primary" onClick={() => ctx.go({ page: 'app', id: 'eduspace' })}>Open in Larp</button><span className="faint small">Built in · populated local demo</span></div>
+        </section>
         <section className="app-tile connected" style={{ ['--app' as string]: '#7886eb' }}>
           <div className="app-tile-head"><span className="app-tile-icon"><CarFront size={18} /></span><div className="grow"><h2>Citylines</h2><p>Family transport</p></div><span className="presence-text good">● ready</span></div>
           <p className="app-tile-line">Plan family trips, keep cab details handy and track vehicle care.</p>
@@ -72,10 +77,11 @@ export function AppsPage({ ctx }: { ctx: Ctx }) {
 
 // ---------- one app, inside Larp ----------
 
-export function AppView({ ctx, id, tab = 'overview' }: { ctx: Ctx; id: 'swasthya' | 'kosh' | 'citylines'; tab?: 'overview' | 'full' }) {
+export function AppView({ ctx, id, tab = 'overview' }: { ctx: Ctx; id: 'swasthya' | 'kosh' | 'citylines' | 'eduspace'; tab?: 'overview' | 'full' }) {
   const [app, setApp] = useState<ConnectedApp | null>(null);
   useEffect(() => { window.larp?.appsList?.().then((l) => setApp(l.find((x) => x.id === id) || null)); }, [id]);
   const about = ABOUT[id];
+  if (id === 'eduspace') return <div className="page app-view"><button className="btn btn-ghost btn-sm back" onClick={() => ctx.go({ page: 'apps' })}><ArrowLeft size={14} /> Apps</button><PageHeader title="EduSpace" subtitle="A little progress, every day. Your local learning workspace." /><iframe className="app-frame" src="./eduspace/index.html" title="EduSpace learning workspace" /></div>;
   if (id === 'citylines') return <div className="page app-view"><button className="btn btn-ghost btn-sm back" onClick={() => ctx.go({ page: 'apps' })}><ArrowLeft size={14} /> Apps</button><PageHeader title="Citylines" subtitle="Family journeys and vehicle care, together in one place." /><iframe className="app-frame" src="./citylines/index.html" title="Citylines family transport planner" /></div>;
   if (!window.larp?.appsCall) return <AppsPage ctx={ctx} />;
   if (app && !app.connected) return <div className="page"><EmptyState title={`${app.name} isn't connected`} action={<button className="btn btn-primary" onClick={() => ctx.go({ page: 'apps' })}>Go to Apps</button>} /></div>;
