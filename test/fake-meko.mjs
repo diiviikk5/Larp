@@ -15,7 +15,7 @@ export async function startFakeMeko({ token = 'test-token' } = {}) {
   const calls = [];
 
   const conversations = new Set();
-  const NEEDS = ['memory_add', 'memory_search', 'memory_promote', 'memory_update', 'memory_delete_by_id', 'conversation_add_message', 'context_search', 'memory_get_all', 'artifact_put', 'knowledgebase_search'];
+  const NEEDS = ['memory_add', 'memory_search', 'memory_promote', 'memory_update', 'memory_delete_by_id', 'conversation_add_message', 'context_search', 'memory_get_all', 'artifact_put', 'knowledgebase_search', 'datapack_search', 'datapack_create'];
   const artifacts = new Map(); // sha256 -> { artifact_id, filename, ... }
   const documents = [];        // { id, datapack_id, text }: knowledge-base chunks
   const kb = (datapack_id, query, limit) => {

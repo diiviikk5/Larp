@@ -424,7 +424,7 @@ function useTitleBar(look: unknown) {
 }
 
 const TONE: Record<string, string> = {
-  awaiting_approval: 'warn', running: 'run', applying: 'run', queued: 'idle', revision_requested: 'idle',
+  awaiting_approval: 'warn', running: 'run', applying: 'run', waiting: 'run', queued: 'idle', revision_requested: 'idle',
   needs_review: 'review', failed: 'bad', interrupted: 'bad', apply_failed: 'bad', applied: 'done', accepted: 'done', denied: 'idle', cancelled: 'idle',
 };
 

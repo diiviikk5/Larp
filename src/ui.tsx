@@ -76,13 +76,13 @@ export function agentStatus(a: Pick<Agent, 'online' | 'busy'>): 'online' | 'busy
 // ---------- status ----------
 
 export const STATUS_LABEL: Record<TaskStatus, string> = {
-  awaiting_approval: 'Needs approval', queued: 'Queued', running: 'Running', needs_review: 'In review',
+  awaiting_approval: 'Needs approval', queued: 'Queued', running: 'Running', waiting: 'Waiting on an agent', needs_review: 'In review',
   revision_requested: 'Revising', accepted: 'Accepted', applying: 'Applying', applied: 'Merged',
   apply_failed: 'Apply failed', denied: 'Declined', cancelled: 'Cancelled', failed: 'Failed', interrupted: 'Interrupted',
 };
 
 const STATUS_TONE: Record<TaskStatus, string> = {
-  awaiting_approval: 'warn', queued: 'neutral', running: 'accent', needs_review: 'info', revision_requested: 'neutral',
+  awaiting_approval: 'warn', queued: 'neutral', running: 'accent', waiting: 'info', needs_review: 'info', revision_requested: 'neutral',
   accepted: 'good', applying: 'accent', applied: 'good', apply_failed: 'bad', denied: 'neutral', cancelled: 'neutral',
   failed: 'bad', interrupted: 'bad',
 };

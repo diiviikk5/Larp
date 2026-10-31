@@ -19,7 +19,7 @@ export type Route =
   | { page: 'care'; id?: string };
 
 export type TaskFilter = 'all' | 'mine' | 'active' | 'review' | 'done';
-export type SettingsTab = 'device' | 'network' | 'phones' | 'appearance' | 'about';
+export type SettingsTab = 'device' | 'network' | 'phones' | 'telegram' | 'appearance' | 'about';
 
 /** Everything a page needs: data, the current space, this device, and navigation. */
 export type Ctx = {

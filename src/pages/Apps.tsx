@@ -49,16 +49,17 @@ export function AppsPage({ ctx }: { ctx: Ctx }) {
               </div>
               <p className="app-tile-line">{about.line}</p>
               <div className="app-tile-foot">
-                {a.connected ? (
-                  <>
-                    <button className="btn btn-primary" onClick={() => ctx.go({ page: 'app', id: a.id })}>Open in Larp</button>
-                    <span className="faint small">Connected {a.connectedAt ? timeAgo(a.connectedAt) : ''} · {a.url?.replace('http://', '')}</span>
-                  </>
-                ) : a.running ? (
-                  <button className="btn btn-primary" disabled={action.busy} onClick={() => action.run(async () => { setApps(await window.larp!.appsConnect!({ id: a.id })); toast(`${a.name} connected`); })}><Link2 size={14} /> Connect</button>
-                ) : (
-                  <span className="faint small">Start it on this computer (<code className="mono">npm --prefix {a.name} run dev</code>), then connect.</span>
-                )}
+                {/* Same as Citylines: one Open button. It connects first when the app is running but not yet connected. */}
+                <button className="btn btn-primary" disabled={action.busy || (!a.connected && !a.running)} title={!a.connected && !a.running ? `Start ${a.name} on this computer first` : undefined}
+                  onClick={() => action.run(async () => {
+                    if (!a.connected) { setApps(await window.larp!.appsConnect!({ id: a.id })); toast(`${a.name} connected`); }
+                    ctx.go({ page: 'app', id: a.id });
+                  })}>{a.connected ? 'Open in Larp' : <><Link2 size={14} /> Open in Larp</>}</button>
+                <span className="faint small">
+                  {a.connected ? <>Connected {a.connectedAt ? timeAgo(a.connectedAt) : ''} · {a.url?.replace('http://', '')}</>
+                    : a.running ? 'Running on this computer · connects when you open it'
+                    : 'Starting inside Larp…'}
+                </span>
               </div>
             </section>
           );

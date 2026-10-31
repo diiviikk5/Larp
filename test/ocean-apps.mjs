@@ -8,7 +8,7 @@ import { _electron as electron } from '@playwright/test';
 const out = process.argv[2] || path.join(os.tmpdir(), 'larp-ocean');
 await fs.mkdir(out, { recursive: true });
 const data = await fs.mkdtemp(path.join(os.tmpdir(), 'larp-ocean-'));
-const app = await electron.launch({ args: ['.'], env: { ...process.env, LARP_DATA_DIR: data, LARP_NO_SPLASH: '1' } });
+const app = await electron.launch({ args: ['.'], env: { ...process.env, MEKO_API_KEY: '', LARP_DATA_DIR: data, LARP_NO_SPLASH: '1' } });
 const errors = [];
 try {
   const page = await app.firstWindow();

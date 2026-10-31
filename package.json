@@ -1,6 +1,6 @@
 {
   "name": "larp",
-  "version": "0.4.0",
+  "version": "0.6.1",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
@@ -15,6 +15,8 @@
     "test:ports": "node test/port-fallback.mjs",
     "test:agents": "node test/real-agents.mjs",
     "detect": "node test/detect.mjs",
+    "test:invite": "node test/invite-link.mjs",
+    "test:codex-profile": "node test/codex-profile.mjs",
     "meko:check": "node test/meko-check.mjs",
     "test:memory": "node test/memory.mjs",
     "test:sql": "node test/pg-standin.mjs",
@@ -24,11 +26,19 @@
     "dist:linux": "npm run build && electron-builder --linux",
     "test:hosted": "node test/hosted.mjs",
     "test:packaged": "node test/packaged.mjs",
-    "test:ocean": "node test/ocean-apps.mjs"
+    "test:ocean": "node test/ocean-apps.mjs",
+    "test:telegram": "node test/telegram.mjs",
+    "test:telegram-ui": "node test/telegram-ui.mjs",
+    "test:demo": "node test/demo-two-apps.mjs",
+    "test:apps": "node test/apps-builtin.mjs",
+    "test:round2": "node test/demo-round2.mjs",
+    "test:update": "node test/update.mjs",
+    "test:talk": "node test/agents-talk.mjs"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.3.0",
     "@modelcontextprotocol/sdk": "^1.32.2",
+    "electron-updater": "^6.8.11",
     "pg": "^8.23.1"
   },
   "devDependencies": {
@@ -58,11 +68,16 @@
       "electron/**",
       "server/**",
       "dist/**",
+      "apps/**",
       "public/larp-icon.png",
       "package.json",
       "!**/*.map"
     ],
     "asar": true,
+    "compression": "maximum",
+    "electronLanguages": [
+      "en-US"
+    ],
     "win": {
       "target": [
         {
@@ -97,6 +112,12 @@
       "icon": "public/larp-icon.png",
       "category": "Development",
       "artifactName": "Larp-${version}.${ext}"
-    }
+    },
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://larp-seven.vercel.app/downloads"
+      }
+    ]
   }
 }

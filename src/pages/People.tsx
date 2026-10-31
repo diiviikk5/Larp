@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Laptop, UserPlus } from 'lucide-react';
 import type { Ctx } from '../route';
 import { AgentAvatar, Avatar, Card, CopyValue, ErrorText, Field, PageHeader, agentStatus, useAction } from '../ui';
+import { inviteMessage, isTailscale } from '../invite';
 
 export function People({ ctx }: { ctx: Ctx }) {
   const { state, space, device } = ctx;
@@ -47,15 +48,39 @@ function Invite({ ctx }: { ctx: Ctx }) {
   const [invite, setInvite] = useState<{ code: string; expiresAt: number } | null>(null);
   const action = useAction();
   const addresses = (ctx.device?.urls || []).filter((u) => !u.includes('127.0.0.1'));
-  const address = addresses[0] || ctx.device?.url || location.origin;
+  const tailscale = addresses.find(isTailscale);
+  const local = addresses.find((u) => !isTailscale(u));
+  const [where, setWhere] = useState<'local' | 'tailscale'>(tailscale && !local ? 'tailscale' : 'local');
+  const address = (where === 'tailscale' ? tailscale : local) || addresses[0] || ctx.device?.url || location.origin;
+  const [copied, setCopied] = useState(false);
+  const message = invite ? inviteMessage({ spaceName: ctx.space.name, address, code: invite.code, expiresAt: invite.expiresAt }) : '';
   return (
     <Card title={<><UserPlus size={15} /> Invite to {ctx.space.name}</>}>
-      <p className="card-text">They open Larp on their computer, choose <strong>Join a space</strong>, and enter the address and code.</p>
+      <p className="card-text">Create an invite and send the message to your friend. They paste it into <strong>Join a space</strong> in Larp, and that's it.</p>
       {invite ? (
         <div className="form">
-          <Field label="Address"><CopyValue value={address} /></Field>
-          <Field label="Invite code" hint={`Single use. Expires ${new Date(invite.expiresAt).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}.`}><CopyValue value={invite.code} large /></Field>
-          <button className="btn btn-sm" onClick={() => setInvite(null)}>Done</button>
+          {tailscale && local && (
+            <Field label="Where is your friend?">
+              <div className="segmented">
+                <button aria-pressed={where === 'local'} onClick={() => setWhere('local')}>On my Wi-Fi</button>
+                <button aria-pressed={where === 'tailscale'} onClick={() => setWhere('tailscale')}>Elsewhere (Tailscale)</button>
+              </div>
+            </Field>
+          )}
+          <Field label="Message to send" hint="The invite works once. Create one per person.">
+            <pre className="invite-message">{message}</pre>
+          </Field>
+          <div className="row">
+            <button className="btn btn-primary btn-sm" onClick={async () => { await navigator.clipboard.writeText(message); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>{copied ? 'Copied' : 'Copy message'}</button>
+            <button className="btn btn-sm" onClick={() => setInvite(null)}>Done</button>
+          </div>
+          <details className="small faint"><summary>Address and code separately</summary>
+            <div className="form" style={{ marginTop: 8 }}>
+              <Field label="Address"><CopyValue value={address} /></Field>
+              <Field label="Invite code"><CopyValue value={invite.code} large /></Field>
+            </div>
+          </details>
+          {!tailscale && <p className="notice">Friend not on your Wi-Fi? Install Tailscale on both computers and join the same Tailscale network. Its address then appears here.</p>}
         </div>
       ) : (
         <button className="btn btn-primary" disabled={action.busy} onClick={() => action.run(async () => setInvite(await ctx.larp.act('POST', 'invites', { spaceId: ctx.space.id })))}>Create invite code</button>

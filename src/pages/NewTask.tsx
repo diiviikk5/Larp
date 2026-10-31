@@ -11,6 +11,8 @@ export function NewTaskSheet({ ctx, agentId: preset, onClose, onCreated }: { ctx
   const [title, setTitle] = useState('');
   const [instructions, setInstructions] = useState('');
   const [check, setCheck] = useState(() => localStorage.getItem(`larp.check.${space.id}`) || '');
+  // Build spaces do code by default; "Just answer" is for questions and plans (no file changes, no check).
+  const [answerOnly, setAnswerOnly] = useState(false);
   const action = useAction();
   const agent = agents.find((a) => a.id === agentId);
   const owner = state.people.find((p) => p.id === agent?.ownerId);
@@ -24,8 +26,8 @@ export function NewTaskSheet({ ctx, agentId: preset, onClose, onCreated }: { ctx
     localStorage.setItem(`larp.check.${space.id}`, check);
     action.run(async () => {
       const task = await ctx.larp.act('POST', 'tasks', {
-        spaceId: space.id, agentId: agent.id, kind: space.kind === 'build' ? 'code' : 'general',
-        title: title.trim() || instructions.trim().split('\n')[0].slice(0, 80), instructions, check: check.trim() || undefined,
+        spaceId: space.id, agentId: agent.id, kind: space.kind === 'build' && !answerOnly ? 'code' : 'general',
+        title: title.trim() || instructions.trim().split('\n')[0].slice(0, 80), instructions, check: (!answerOnly && check.trim()) || undefined,
       });
       onCreated(task.id);
     });
@@ -76,6 +78,14 @@ export function NewTaskSheet({ ctx, agentId: preset, onClose, onCreated }: { ctx
           <textarea id="task-instructions" rows={8} placeholder={'Describe the outcome you want, constraints, and anything the agent should know.\n\nThe agent sees the repository but nothing else on the machine.'} value={instructions} onChange={(e) => setInstructions(e.target.value)} />
         </Field>
         {space.kind === 'build' && (
+          <Field label="What you want back">
+            <div className="segmented">
+              <button aria-pressed={!answerOnly} onClick={() => setAnswerOnly(false)}>Code changes</button>
+              <button aria-pressed={answerOnly} onClick={() => setAnswerOnly(true)}>Just an answer</button>
+            </div>
+          </Field>
+        )}
+        {space.kind === 'build' && !answerOnly && (
           <Field label="Check command" htmlFor="task-check" hint="Runs on the agent owner's machine after the agent finishes. A task is verified only if this exits with 0.">
             <input id="task-check" className="mono" placeholder="npm test" value={check} onChange={(e) => setCheck(e.target.value)} />
           </Field>

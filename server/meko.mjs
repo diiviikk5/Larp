@@ -14,7 +14,9 @@ const KIND = {
 
 // Tools that require a conversation_id from conversation_create (Meko uses it to nest traces).
 const NEEDS_CONVERSATION = new Set(['memory_add', 'memory_search', 'memory_promote', 'memory_update', 'memory_delete_by_id',
-  'memory_get_all', 'conversation_add_message', 'context_search', 'knowledgebase_search', 'artifact_put', 'artifact_get']);
+  'memory_get_all', 'conversation_add_message', 'context_search', 'knowledgebase_search', 'artifact_put', 'artifact_get',
+  // Live Meko also refuses these without one, although their schemas mark it optional.
+  'datapack_search', 'datapack_create']);
 
 export class Meko {
   constructor({ apiKey, url = 'https://mcp.mekodata.ai/mcp', team = 'larp', enabled = true, onCall } = {}) {
@@ -40,7 +42,7 @@ export class Meko {
     if (this.client) return this.client;
     if (this.connecting) return this.connecting;
     this.connecting = (async () => {
-      const client = new Client({ name: 'larp-campus', version: '0.4.0' });
+      const client = new Client({ name: 'larp', version: '0.6.1' });
       const transport = new StreamableHTTPClientTransport(new URL(this.url), {
         requestInit: { headers: { Authorization: `Bearer ${this.apiKey}` } },
       });

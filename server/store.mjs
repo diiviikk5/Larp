@@ -88,6 +88,8 @@ export class Store {
   }
 
   async flush() {
+    // Wait for a save already writing, so two writers never share the .tmp file.
+    await this.writing;
     if (this.pendingSave) {
       clearTimeout(this.pendingSave);
       this.pendingSave = null;

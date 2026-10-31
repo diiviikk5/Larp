@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Info, Laptop, Palette, Smartphone, Wifi } from 'lucide-react';
+import { Info, Laptop, Palette, Send, Smartphone, Wifi } from 'lucide-react';
 import type { Ctx, SettingsTab } from '../route';
 import { confirmDialog } from '../feedback';
 import { AgentAvatar, Card, CopyValue, ErrorText, Field, PageHeader, agentStatus, useAction } from '../ui';
@@ -10,6 +10,7 @@ export function Settings({ ctx, tab: initial }: { ctx: Ctx; tab?: SettingsTab })
   const tabs: { id: SettingsTab; label: string; icon: React.ReactElement; desktop?: boolean }[] = [
     { id: 'device', label: 'This computer', icon: <Laptop size={15} />, desktop: true },
     { id: 'network', label: 'Network', icon: <Wifi size={15} />, desktop: true },
+    { id: 'telegram', label: 'Telegram', icon: <Send size={15} /> },
     { id: 'phones', label: 'Phones', icon: <Smartphone size={15} /> },
     { id: 'appearance', label: 'Appearance', icon: <Palette size={15} /> },
     { id: 'about', label: 'About', icon: <Info size={15} /> },
@@ -26,12 +27,118 @@ export function Settings({ ctx, tab: initial }: { ctx: Ctx; tab?: SettingsTab })
         <div className="settings-body">
           {tab === 'device' && <DeviceTab ctx={ctx} />}
           {tab === 'network' && <NetworkTab ctx={ctx} />}
+          {tab === 'telegram' && <TelegramTab ctx={ctx} />}
           {tab === 'phones' && <PhonesTab ctx={ctx} />}
           {tab === 'appearance' && <AppearanceTab />}
           {tab === 'about' && <AboutTab ctx={ctx} />}
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Telegram: the keeper connects one bot for the space; then each person links their own chat with a
+ * one-tap link. Approvals, results and checklists reach them there, and they can send tasks back.
+ */
+function TelegramTab({ ctx }: { ctx: Ctx }) {
+  const tg = ctx.state.telegram;
+  const [token, setToken] = useState('');
+  const [link, setLink] = useState<string | null>(null);
+  const action = useAction();
+  const open = (url: string) => (window.larp ? window.larp.openExternal({ url }) : window.open(url, '_blank'));
+  if (!tg) return null;
+  return (
+    <>
+      <Card title="Telegram">
+        <p className="card-text">Use Larp from Telegram, from anywhere: approve requests, get results and accept them, take checklist items, and send your agent a task by typing a message. Nothing to install, and it works away from home.</p>
+        {tg.connected ? (
+          <dl className="props wide">
+            <dt>Bot</dt><dd><a href="#" onClick={(e) => { e.preventDefault(); open(`https://t.me/${tg.botName}`); }}>@{tg.botName}</a></dd>
+            <dt>People linked</dt><dd>{tg.linkedIds.length}</dd>
+          </dl>
+        ) : tg.keeper ? (
+          <div className="form">
+            <ol className="tg-steps">
+              <li>In Telegram, open <a href="#" onClick={(e) => { e.preventDefault(); open('https://t.me/BotFather'); }}>@BotFather</a> and send <code className="mono">/newbot</code>.</li>
+              <li>Give it a name (for example “Sharma home Larp”) and a username ending in “bot”.</li>
+              <li>Copy the token it gives you and paste it here.</li>
+            </ol>
+            <Field label="Bot token" hint="Stays on the computer that hosts this space. It is never shown to others or stored in Meko.">
+              <input className="mono" type="password" autoComplete="off" placeholder="123456789:AA…" value={token} onChange={(e) => setToken(e.target.value.trim())} />
+            </Field>
+            <div className="row"><button className="btn btn-primary btn-sm" disabled={!token || action.busy} onClick={() => action.run(async () => { await ctx.larp.act('POST', 'telegram/connect', { token }); setToken(''); })}>Connect bot</button></div>
+          </div>
+        ) : <p className="card-empty">Not set up yet. Ask the person who started the space to connect a Telegram bot.</p>}
+        <ErrorText error={action.error} />
+      </Card>
+      {tg.connected && (
+        <Card title="Your Telegram">
+          {tg.linked ? (
+            <div className="setting-row">
+              <div className="grow"><strong className="good">Linked</strong><p>Larp messages you there when your agents need you or a result is ready.</p></div>
+              <button className="btn btn-sm" disabled={action.busy} onClick={() => action.run(() => ctx.larp.act('POST', 'telegram/unlink', {}))}>Unlink</button>
+            </div>
+          ) : (
+            <div className="form">
+              <p className="card-text">Opens Telegram with @{tg.botName}. Press <strong>Start</strong> there and you’re linked.</p>
+              <div className="row">
+                <button className="btn btn-primary btn-sm" disabled={action.busy} onClick={() => action.run(async () => { const r = await ctx.larp.act('POST', 'telegram/link', {}) as { url: string }; setLink(r.url); open(r.url); })}>Link my Telegram</button>
+              </div>
+              {link && <Field label="Or open this link on your phone" hint="Works once, for 30 minutes."><CopyValue value={link} /></Field>}
+            </div>
+          )}
+        </Card>
+      )}
+      {tg.connected && <TelegramInvite ctx={ctx} />}
+      {tg.connected && tg.keeper && <TelegramMembers ctx={ctx} />}
+      {tg.connected && tg.keeper && (
+        <Card title="Bot" className="danger-card">
+          <p className="card-text">Disconnecting stops the bot and unlinks everyone.</p>
+          <button className="btn btn-danger btn-sm" disabled={action.busy} onClick={async () => { if (await confirmDialog({ title: 'Disconnect the Telegram bot?', body: 'Everyone is unlinked. You can connect a bot again later.', confirmLabel: 'Disconnect', danger: true })) action.run(() => ctx.larp.act('POST', 'telegram/disconnect', {})); }}>Disconnect</button>
+        </Card>
+      )}
+    </>
+  );
+}
+
+/** Join from Telegram: the person taps the link, presses Start, and is in the space. No Larp install. */
+function TelegramInvite({ ctx }: { ctx: Ctx }) {
+  const [invite, setInvite] = useState<string | null>(null);
+  const action = useAction();
+  return (
+    <Card title={`Invite someone to ${ctx.space.name} by Telegram`}>
+      <p className="card-text">For family or friends who won’t install Larp. They tap the link, press <strong>Start</strong>, and they’re in, under their Telegram name. From Telegram they can ask agents for things, approve, and take checklist items.</p>
+      {invite ? (
+        <Field label="Send them this link" hint="Works once, for 24 hours. Make one per person."><CopyValue value={invite} /></Field>
+      ) : (
+        <button className="btn btn-primary btn-sm" disabled={action.busy} onClick={() => action.run(async () => setInvite(((await ctx.larp.act('POST', 'telegram/invite', { spaceId: ctx.space.id })) as { url: string }).url))}>Create Telegram invite</button>
+      )}
+      <ErrorText error={action.error} />
+    </Card>
+  );
+}
+
+/** For the keeper: who in the space has Telegram linked, and a link for anyone who hasn't. */
+function TelegramMembers({ ctx }: { ctx: Ctx }) {
+  const tg = ctx.state.telegram!;
+  const [links, setLinks] = useState<Record<string, string>>({});
+  const action = useAction();
+  const people = ctx.space.memberIds.map((id) => ctx.state.people.find((p) => p.id === id)).filter((p): p is NonNullable<typeof p> => Boolean(p));
+  return (
+    <Card title={`People in ${ctx.space.name}`}>
+      <ul className="list">
+        {people.map((p) => (
+          <li key={p.id}>
+            <span className="grow"><strong>{p.name}</strong>{links[p.id] && <small className="mono">{links[p.id]}</small>}</span>
+            {tg.linkedIds.includes(p.id) ? <span className="badge tone-good"><i />Linked</span>
+              : links[p.id] ? <CopyValue value={links[p.id]} />
+              : <button className="btn btn-sm" disabled={action.busy} onClick={() => action.run(async () => { const r = (await ctx.larp.act('POST', 'telegram/link', { personId: p.id })) as { url: string }; setLinks((l) => ({ ...l, [p.id]: r.url })); })}>Get link</button>}
+          </li>
+        ))}
+      </ul>
+      <ErrorText error={action.error} />
+    </Card>
   );
 }
 
@@ -137,7 +244,7 @@ function AboutTab({ ctx }: { ctx: Ctx }) {
   return (
     <Card title="About Larp">
       <dl className="props wide">
-        <dt>Version</dt><dd>0.4.0</dd>
+        <dt>Version</dt><dd>0.6.1</dd>
         <dt>Signed in as</dt><dd>{ctx.state.me.name}</dd>
         <dt>Spaces</dt><dd>{ctx.state.spaces.length}</dd>
       </dl>
