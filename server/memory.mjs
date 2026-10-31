@@ -16,6 +16,7 @@ const slug = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').re
 const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 const PENDING_LIMIT_MS = 20_000;
 const HANDOFF_TTL_DAYS = 7;
+const TEAM_PACK = 'team'; // <LARP_TEAM>-team: the one datapack holding the team's memory
 const SUGGEST_AFTER_REUSES = 2;
 // Shared libraries every agent can search before a task: documents uploaded to <team>-skills and
 // <team>-apps. Larp only reads them and never creates them, so a team without them spends no datapacks.
@@ -47,8 +48,26 @@ export class Memory {
     this.meko?.setEnabled(this.on);
   }
 
-  agentPack(agent) { return `agent-${slug(agent.name)}-${agent.id.slice(-4)}`; }
-  spacePack(space) { return `space-${slug(space.name)}-${space.id.slice(-4)}`; }
+  /**
+   * One Meko datapack holds the whole team's memory (<LARP_TEAM>-team), so Larp fits Meko's free tier,
+   * which allows very few datapacks. Inside it Meko keeps a separate memory collection per agent_id:
+   * each agent remembers under its own key, and each space's approved lessons under the space's key.
+   * Lessons also carry their space in metadata, and recall drops another space's knowledge.
+   */
+  spacePack() { return TEAM_PACK; }
+  packOf() { return TEAM_PACK; }
+  memKey(agent) { return `agent-${slug(agent.name)}-${agent.id.slice(-4)}`; }
+  spaceKey(space) { return `space-${slug(space.name)}-${space.id.slice(-4)}`; }
+
+  /** Drop recalled shared knowledge that belongs to another space (promoted lessons are team-wide in Meko). */
+  ownSpace(items, space) {
+    const elsewhere = Object.values(this.s.lessons || {}).filter((l) => l.spaceId !== space.id).map((l) => l.text);
+    return items.filter((h) => {
+      const tagged = h.metadata?.space;
+      if (tagged) return tagged === space.id;
+      return !elsewhere.some((t) => t && h.text && (t.includes(h.text.slice(0, 60)) || h.text.includes(t.slice(0, 60))));
+    });
+  }
 
   /** Agents of the requester in the task's space: they speak for the requester in hand-offs. */
   requesterAgents(task) {
@@ -81,40 +100,55 @@ export class Memory {
       const items = [];
       let saved = 0;
       const qualities = [];
+      // Meko stores memories as extracted facts, so one fact can come back in several wordings:
+      // keep the first of near-duplicates, leaving room for the memories that differ.
       const add = (source, from, hits) => {
-        for (const h of hits) if (h.text && !items.some((i) => i.text === h.text)) items.push({ ...h, source, from });
+        for (const h of hits) if (h.text && !items.some((i) => i.text === h.text || similar(i.text, h.text) >= 0.6)) items.push({ ...h, source, from });
       };
+      // A recalled lesson of this space is shown as the person approved it; Meko decided it's relevant.
+      const asApproved = (hits) => hits.map((h) => {
+        const mine = Object.values(this.s.lessons || {}).filter((l) => l.spaceId === space.id && l.status === 'promoted');
+        const lesson = mine.find((l) => l.memoryId === h.id) || mine.find((l) => similar(l.text, h.text) >= 0.15);
+        return lesson ? { ...h, text: lesson.text, lessonId: lesson.id } : h;
+      });
       const [own, shared] = await Promise.all([
-        this.meko.search({ agent: agent.name, datapack: this.agentPack(agent), query, meta: this.meta(task) }),
-        this.meko.search({ agent: agent.name, datapack: this.spacePack(space), query, source: 'auto', meta: this.meta(task, { summary: `space knowledge: ${task.title}` }) }),
+        this.meko.search({ agent: agent.name, key: this.memKey(agent), datapack: this.spacePack(space), query, limit: 8, meta: this.meta(task) }),
+        this.meko.search({ agent: agent.name, key: this.spaceKey(space), datapack: this.spacePack(space), query, source: 'auto', meta: this.meta(task, { space: true, summary: `space knowledge: ${task.title}` }) }),
       ]);
       for (const r of [own, shared]) { saved += r.saved; if (r.quality) qualities.push(r.quality); this.payRoyalties(r, `agent:${agent.id}`, task); }
       add('memory', agent.name, own.items);
-      add('space', space.name, shared.items);
+      add('space', space.name, asApproved(this.ownSpace(shared.items, space)));
       // Delegated: the requester's agents hand over what they know about this topic.
       if (task.createdBy !== agent.ownerId) {
         const requester = this.s.people[task.createdBy]?.name || 'Someone';
         for (const theirs of this.requesterAgents(task)) {
-          const found = await this.meko.search({ agent: theirs.name, datapack: this.agentPack(theirs), query, limit: 3, meta: this.meta(task, { agentId: theirs.id }) });
+          const found = await this.meko.search({ agent: theirs.name, key: this.memKey(theirs), datapack: this.spacePack(space), query, limit: 3, meta: this.meta(task, { agentId: theirs.id }) });
           const known = found.items.filter((h) => h.score === null || h.score >= 0.3);
           if (!known.length) continue;
           saved += found.saved;
           this.payRoyalties(found, `agent:${agent.id}`, task);
           const note = `Hand-off from ${requester}'s agent ${theirs.name} for "${task.title}": ${known.map((h) => h.text).join(' | ')}`;
           const written = await this.meko.remember({
-            agent: theirs.name, datapack: this.agentPack(agent), text: clip(note, 1500),
+            agent: theirs.name, key: this.memKey(agent), datapack: this.spacePack(space), text: clip(note, 1500),
             metadata: { kind: 'handoff', author: `agent:${theirs.id}`, task: task.id },
             meta: this.meta(task, { agentId: theirs.id, to: agent.name, toId: agent.id }),
           });
-          items.push({ id: written.id, text: note, score: null, source: 'handoff', from: theirs.name, datapack: this.agentPack(agent) });
+          items.push({ id: written.id, text: note, score: null, source: 'handoff', from: theirs.name, datapack: this.spacePack(space) });
         }
       }
-      for (const item of items) item.datapack ||= item.source === 'space' ? this.spacePack(space) : this.agentPack(agent);
+      for (const item of items) item.datapack ||= this.spacePack(space);
       const library = [];
       for (const lib of LIBRARIES) {
-        if (!(await this.meko.find(lib.pack, agent.name))) continue;
-        // knowledgebase_search, not context_search: context_search's fixed cutoff drops most catalog matches.
-        const found = await this.meko.knowledge({ agent: agent.name, datapack: lib.pack, query, limit: 3, meta: this.meta(task, { summary: `${lib.pack} library: ${task.title}` }) });
+        // Libraries are extras: if one can't be reached, the agent still gets its memory and lessons.
+        let found;
+        try {
+          if (!(await this.meko.find(lib.pack, agent.name))) continue;
+          // knowledgebase_search, not context_search: context_search's fixed cutoff drops most catalog matches.
+          found = await this.meko.knowledge({ agent: agent.name, datapack: lib.pack, query, limit: 3, meta: this.meta(task, { summary: `${lib.pack} library: ${task.title}` }) });
+        } catch (error) {
+          console.error(`[larp memory] ${lib.pack} library skipped:`, error.message);
+          continue;
+        }
         // The same section can exist twice while an old copy of a document is still uploaded: keep the fuller one.
         const best = new Map();
         for (const h of found) {
@@ -161,7 +195,7 @@ export class Memory {
       const r = task.result;
       const verdict = r.error ? `failed: ${r.error.slice(0, 300)}` : !r.check ? 'finished' : r.check.passed ? 'finished, check passed' : 'finished, check failed';
       await this.meko.converse({
-        agent: agent.name, datapack: this.agentPack(agent),
+        agent: agent.name, key: this.memKey(agent), datapack: this.packOf(task),
         input: clip(`Task "${task.title}" in ${task.repo || 'a folder'}: ${task.instructions}`, 3000),
         output: clip(`${verdict}. ${r.summary || ''}${r.files?.length ? ` Files: ${r.files.join(', ')}.` : ''}`, 3000),
         metadata: { kind: 'outcome', author: `agent:${agent.id}`, task: task.id },
@@ -178,7 +212,7 @@ export class Memory {
       const agent = this.s.agents[task.agentId];
       const who = this.s.people[personId]?.name || 'A reviewer';
       await this.meko.remember({
-        agent: agent.name, datapack: this.agentPack(agent),
+        agent: agent.name, key: this.memKey(agent), datapack: this.packOf(task),
         text: clip(`${who} asked for a change on "${task.title}"${task.repo ? ` in ${task.repo}` : ''}: ${text}`, 1500),
         metadata: { kind: 'feedback', author: `person:${personId}`, task: task.id }, meta: this.meta(task),
       });
@@ -195,7 +229,7 @@ export class Memory {
       const note = clip(`${owner}'s agent ${agent.name} did "${task.title}" for you${task.repo ? ` in ${task.repo}` : ''}; accepted. ${r.summary || ''}${r.files?.length ? ` Changed: ${r.files.join(', ')}.` : ''}`, 1500);
       for (const theirs of this.requesterAgents(task)) {
         await this.meko.remember({
-          agent: agent.name, datapack: this.agentPack(theirs), text: note,
+          agent: agent.name, key: this.memKey(theirs), datapack: this.packOf(task), text: note,
           metadata: { kind: 'handback', author: `agent:${agent.id}`, task: task.id },
           meta: this.meta(task, { to: theirs.name, toId: theirs.id }),
         });
@@ -217,7 +251,7 @@ export class Memory {
     if (!body) return;
     const agent = this.s.agents[task.agentId];
     const filename = `proof-${task.id}.patch`;
-    const stored = await this.meko.artifact({ agent: agent.name, datapack: 'proofs', filename, text: `${body}\n`, contentType: 'text/x-diff', meta: this.meta(task, { summary: `proof of "${task.title}"` }) });
+    const stored = await this.meko.artifact({ agent: agent.name, key: this.memKey(agent), datapack: this.packOf(task), filename, text: `${body}\n`, contentType: 'text/x-diff', meta: this.meta(task, { summary: `proof of "${task.title}"` }) });
     const original = stored.duplicate ? stored.filename.match(/^proof-(.+)\.patch$/)?.[1] || null : null;
     task.proof = { artifactId: stored.artifactId, hash: stored.hash, size: stored.size, duplicateOf: original && original !== task.id ? original : null, at: new Date().toISOString(), check: r.check ? r.check.passed : null };
     (this.s.proofs ||= {})[stored.hash || task.id] = { taskId: task.proof.duplicateOf || task.id, firstAt: this.s.proofs?.[stored.hash]?.firstAt || task.proof.at, seenBy: [...new Set([...(this.s.proofs?.[stored.hash]?.seenBy || []), task.id])] };
@@ -237,24 +271,26 @@ export class Memory {
   async sleep(agentId) {
     const agent = this.s.agents[agentId];
     if (!agent || !this.on) return null;
-    const pack = this.agentPack(agent);
+    const key = this.memKey(agent);
     const meta = { agentId: agent.id, summary: `${agent.name} reviews its memory` };
-    const all = (await this.meko.listAll({ agent: agent.name, datapack: pack, meta })).sort((a, b) => String(b.at).localeCompare(String(a.at)));
+    const pack = this.packOf();
+    const all = (await this.meko.listAll({ agent: agent.name, key, datapack: pack, meta })).map((m) => ({ ...m, pack }));
+    all.sort((a, b) => String(b.at).localeCompare(String(a.at)));
     const digest = { at: new Date().toISOString(), reviewed: all.length, merged: [], forgot: [], suggest: [] };
     const gone = new Set();
     for (const keep of all) {
       if (gone.has(keep.id)) continue;
-      const twins = all.filter((m) => m.id !== keep.id && !gone.has(m.id) && similar(m.text, keep.text) >= 0.8);
+      const twins = all.filter((m) => m.id !== keep.id && m.pack === keep.pack && !gone.has(m.id) && similar(m.text, keep.text) >= 0.8);
       if (!twins.length) continue;
       const fullest = [keep, ...twins].reduce((a, b) => (b.text.length > a.text.length ? b : a));
-      if (fullest.text !== keep.text) await this.meko.correct({ agent: agent.name, datapack: pack, memoryId: keep.id, text: fullest.text, meta });
-      for (const t of twins) { await this.meko.forget({ agent: agent.name, datapack: pack, memoryId: t.id, meta }); gone.add(t.id); }
+      if (fullest.text !== keep.text) await this.meko.correct({ agent: agent.name, key, datapack: keep.pack, memoryId: keep.id, text: fullest.text, meta });
+      for (const t of twins) { await this.meko.forget({ agent: agent.name, key, datapack: t.pack, memoryId: t.id, meta }); gone.add(t.id); }
       digest.merged.push({ kept: keep.id, removed: twins.map((t) => t.id), text: clip(fullest.text, 200) });
     }
     const stale = Date.now() - HANDOFF_TTL_DAYS * 86400000;
     for (const m of all) {
       if (gone.has(m.id) || !/^Hand-off from /.test(m.text) || !m.at || Date.parse(m.at) > stale) continue;
-      await this.meko.forget({ agent: agent.name, datapack: pack, memoryId: m.id, meta });
+      await this.meko.forget({ agent: agent.name, key, datapack: m.pack, memoryId: m.id, meta });
       gone.add(m.id);
       digest.forgot.push({ id: m.id, text: clip(m.text, 160), reason: `hand-off note older than ${HANDOFF_TTL_DAYS} days` });
     }
@@ -282,15 +318,15 @@ export class Memory {
     const task = lesson.taskId && this.s.tasks[lesson.taskId];
     const author = task ? this.s.agents[task.agentId]?.name : this.s.people[lesson.proposedBy]?.name;
     const space = this.s.spaces[lesson.spaceId];
-    const meta = { agentId: task?.agentId, spaceId: space.id, taskId: lesson.taskId, to: space.name };
+    const meta = { agentId: task?.agentId, spaceId: space.id, taskId: lesson.taskId, to: space.name, space: true };
     const saved = await this.meko.remember({
-      agent: author || 'person', datapack: this.spacePack(space), text: lesson.text,
-      metadata: { kind: 'lesson', author: `person:${lesson.proposedBy}`, task: lesson.taskId }, meta,
+      agent: author || 'person', key: this.spaceKey(space), datapack: this.spacePack(space), text: lesson.text,
+      metadata: { kind: 'lesson', author: `person:${lesson.proposedBy}`, task: lesson.taskId, space: space.id }, meta,
     });
     if (saved.id) return saved.id;
     // Meko may extract memories asynchronously; find the one just written.
     await new Promise((r) => setTimeout(r, 1500));
-    const hits = await this.meko.recall({ agent: author || 'person', datapack: this.spacePack(space), query: lesson.text, limit: 3, meta });
+    const hits = await this.meko.recall({ agent: author || 'person', key: this.spaceKey(space), datapack: this.spacePack(space), query: lesson.text, limit: 3, meta });
     return hits.find((h) => h.text && lesson.text.includes(h.text.slice(0, 40)))?.id || hits[0]?.id || null;
   }
 
@@ -302,7 +338,7 @@ export class Memory {
       const id = lesson.memoryId || await this.writeLesson(lesson);
       if (!id) throw new Error('Meko did not return the lesson to promote');
       lesson.memoryId = id;
-      await this.meko.promote({ agent: this.s.people[lesson.approvedBy]?.name || 'person', datapack: this.spacePack(space), memoryIds: [id], meta: { spaceId: space.id, taskId: lesson.taskId, summary: lesson.text } });
+      await this.meko.promote({ agent: this.s.people[lesson.approvedBy]?.name || 'person', key: this.spaceKey(space), datapack: this.spacePack(space), memoryIds: [id], meta: { spaceId: space.id, taskId: lesson.taskId, space: true, summary: lesson.text } });
       lesson.status = 'promoted';
     });
   }
@@ -326,9 +362,9 @@ export class Memory {
       team: this.meko?.team || null,
       store: this.c.db ? 'yugabyte' : 'local',
       packs: {
-        agents: Object.fromEntries(agents.map((a) => [a.id, this.meko ? this.meko.name(this.agentPack(a)) : null])),
+        // Each agent's memory: the agent_id it uses inside its spaces' datapacks.
+        agents: Object.fromEntries(agents.map((a) => [a.id, this.meko ? this.memKey(a) : null])),
         spaces: Object.fromEntries([...spaceIds].map((id) => [id, this.meko ? this.meko.name(this.spacePack(this.s.spaces[id])) : null])),
-        proofs: this.meko ? this.meko.name('proofs') : null,
       },
       calls: this.s.mekoCalls.filter((c) => !c.spaceId || spaceIds.has(c.spaceId)).slice(-300),
       lessons: Object.values(this.s.lessons).filter((l) => spaceIds.has(l.spaceId)),

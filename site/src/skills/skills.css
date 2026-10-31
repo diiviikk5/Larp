@@ -76,3 +76,4 @@ body.skills-page { background: var(--paper); color: var(--sumi); font-family: In
   .snav-links a:not([aria-current]) { display: none; }
   .card { min-height: 0; } .card-name { margin-top: 22px; }
 }
+

@@ -4,13 +4,15 @@ import { useLarp, type Session } from './api';
 import type { DeviceConfig } from './types';
 import { ErrorText, Field, LogoMark, useAction } from './ui';
 import { Mascot } from './Mascot';
+import { parseInvite } from './invite';
+import { UpdateBar } from './UpdateBar';
 import { Shell } from './Shell';
 import { ConfirmHost, Toaster } from './feedback';
 import { useAppearance } from './Appearance';
 
 export function App() {
   useAppearance();
-  return <>{window.larp ? <Desktop /> : <Phone />}<Toaster /><ConfirmHost /></>;
+  return <>{window.larp ? <Desktop /> : <Phone />}<Toaster /><ConfirmHost />{window.larp && <UpdateBar />}</>;
 }
 
 function Desktop() {
@@ -43,6 +45,7 @@ function Onboarding({ onDone }: { onDone: (d: DeviceConfig) => void }) {
   const [lan, setLan] = useState(true);
   const [url, setUrl] = useState('');
   const [code, setCode] = useState('');
+  const [invited, setInvited] = useState('');
   const action = useAction();
   const submit = () => action.run(async () => onDone(mode === 'create'
     ? await window.larp!.createSpace({ spaceName: spaceName.trim() || (kind === 'build' ? 'Build studio' : 'Home'), kind, name, lan })
@@ -70,7 +73,7 @@ function Onboarding({ onDone }: { onDone: (d: DeviceConfig) => void }) {
             <button aria-pressed={mode === 'join'} onClick={() => setMode('join')}>Join a space</button>
           </div>
           <h2>{mode === 'create' ? 'Start a new space' : 'Join with an invite'}</h2>
-          <p className="faint">{mode === 'create' ? 'This computer will host it. Others join with a code.' : 'Ask someone in the space for the address and a code.'}</p>
+          <p className="faint">{mode === 'create' ? 'This computer will host it. Others join with a code.' : 'Paste the invite someone in the space sent you.'}</p>
           <div className="form">
             <Field label="Your name" htmlFor="your-name"><input id="your-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Divik" /></Field>
             {mode === 'create' ? (
@@ -86,6 +89,13 @@ function Onboarding({ onDone }: { onDone: (d: DeviceConfig) => void }) {
               </>
             ) : (
               <>
+                <Field label="Invite" htmlFor="invite-link" hint={invited ? 'Address and code filled in from the invite.' : 'Paste the invite (or the whole message) you were sent.'}>
+                  <textarea id="invite-link" className="mono invite-paste" rows={2} placeholder="larp://join?at=…&code=…" value={invited} onChange={(e) => {
+                    const found = parseInvite(e.target.value);
+                    setInvited(found ? e.target.value.match(/larp:\/\/join\?\S+/)![0] : e.target.value);
+                    if (found) { setUrl(found.url); setCode(found.code); }
+                  }} />
+                </Field>
                 <Field label="Space address" htmlFor="host-url" hint="A teammate's laptop on your network, or a Larp server on the internet."><input id="host-url" className="mono" value={url} onChange={(e) => setUrl(e.target.value.trim())} placeholder="https://larp.example.com or http://192.168.1.20:47821" /></Field>
                 <Field label="Invite or setup code" htmlFor="invite"><input id="invite" className="mono code-input" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="XXXXXXXX" /></Field>
               </>

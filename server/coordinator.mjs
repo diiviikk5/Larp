@@ -9,11 +9,13 @@ import os from 'node:os';
 import { Store, newId, newSecret, hashToken } from './store.mjs';
 import { Meko } from './meko.mjs';
 import { Memory } from './memory.mjs';
+import { Telegram } from './telegram.mjs';
 
 // Muted person colors that sit well on both the black and the white theme.
 const COLORS = ['#8a8f99', '#c4875a', '#5f9d7d', '#a07aae', '#6a8fbd', '#b39a5f'];
 const PALS = ['moss', 'bitbug', 'pip', 'boing'];
-const OPEN_TASK = ['awaiting_approval', 'queued', 'running', 'needs_review', 'revision_requested', 'accepted', 'applying'];
+const OPEN_TASK = ['awaiting_approval', 'queued', 'running', 'waiting', 'needs_review', 'revision_requested', 'accepted', 'applying'];
+const MAX_ASKS = 3; // per task, so two agents can't keep asking each other forever
 const MAX_BODY = 2_000_000;
 
 class HttpError extends Error {
@@ -41,6 +43,7 @@ export class Coordinator {
     if (meko === undefined && process.env.MEKO_API_KEY) meko = new Meko({ apiKey: process.env.MEKO_API_KEY, team: process.env.LARP_TEAM || 'larp' });
     if (meko) meko.onCall = (entry) => this.logMekoCall(entry);
     this.memory = new Memory(this, meko || null);
+    this.telegram = new Telegram(this);
     this.streams = new Set();
     this.broadcastTimer = null;
     this.failedClaims = [];
@@ -51,6 +54,7 @@ export class Coordinator {
   async init() {
     await this.store.load();
     this.memory.meko?.setEnabled(this.memory.on);
+    this.telegram.start();
   }
 
   logMekoCall(entry) {
@@ -212,7 +216,7 @@ export class Coordinator {
   }
 
   /** A host registers an agent for a person. The person's own token proves consent. */
-  registerAgent(host, { ownerToken, name, runtime, model, spaceIds, repo }) {
+  registerAgent(host, { ownerToken, name, runtime, model, spaceIds, repo, repoId, usesApps }) {
     const owner = this.auth(ownerToken);
     if (!owner.personId) fail(403, 'The agent owner must sign in');
     const ids = Array.isArray(spaceIds) ? spaceIds : [];
@@ -227,6 +231,8 @@ export class Coordinator {
       model: model ? String(model).slice(0, 80) : null,
       spaceIds: ids,
       repo: repo ? String(repo).slice(0, 80) : null,
+      repoId: repoId ? String(repoId).slice(0, 64) : null,
+      usesApps: Boolean(usesApps),
       pal: PALS[count % PALS.length],
       createdAt: now(),
     };
@@ -245,7 +251,8 @@ export class Coordinator {
       for (const spaceId of patch.spaceIds) this.memberSpace(agent.ownerId, spaceId);
       agent.spaceIds = patch.spaceIds;
     }
-    for (const key of ['runtime', 'model', 'repo']) if (key in patch) agent[key] = patch[key] ? String(patch[key]).slice(0, 80) : null;
+    for (const key of ['runtime', 'model', 'repo', 'repoId']) if (key in patch) agent[key] = patch[key] ? String(patch[key]).slice(0, 80) : null;
+    if ('usesApps' in patch) agent.usesApps = Boolean(patch.usesApps);
     this.changed();
     return agent;
   }
@@ -283,6 +290,7 @@ export class Coordinator {
       instructions: text(instructions, 'Instructions', 16000),
       check: check ? text(check, 'Check command', 400) : null,
       repo: agent.repo,
+      repoId: agent.repoId || null,
       status: 'awaiting_approval',
       attempts: [],
       feedback: [],
@@ -307,7 +315,8 @@ export class Coordinator {
           `From ${this.s.people[personId]?.name}.`,
           agent.repo ? `Works in an isolated git worktree of ${agent.repo}.` : 'Works in an isolated folder.',
           task.check ? `Then runs this check on your machine: ${task.check}` : 'No check command.',
-        ].join(' '),
+          agent.usesApps ? `${agent.name} can read your connected apps (Swasthya, Kosh) to do this; what it finds goes into its answer.` : '',
+        ].filter(Boolean).join(' '),
       });
     } else {
       task.status = 'queued';
@@ -328,6 +337,7 @@ export class Coordinator {
     task.status = status;
     task.updatedAt = now();
     if (eventText) this.store.record({ type: `task.${status}`, spaceId: task.spaceId, actor, taskId: task.id, text: eventText });
+    this.telegram.taskChanged(task, status);
     this.changed();
   }
 
@@ -397,6 +407,7 @@ export class Coordinator {
   requestApproval(fields) {
     const approval = { id: newId('apr'), status: 'pending', createdAt: now(), resolvedAt: null, ...fields };
     this.s.approvals[approval.id] = approval;
+    this.telegram.approvalRequested(approval);
     this.store.record({ type: 'approval.requested', spaceId: approval.spaceId, actor: approval.requestedBy, taskId: approval.taskId, text: approval.title });
     this.changed();
     return approval;
@@ -420,6 +431,7 @@ export class Coordinator {
       const task = this.s.tasks[approval.taskId];
       if (task && task.status === 'awaiting_approval') {
         this.setTaskStatus(task, approval.status === 'approved' ? 'queued' : 'denied', personId);
+        if (task.parentId && approval.status !== 'approved') this.answerParent(task, 'denied');
       }
     }
     this.changed();
@@ -440,7 +452,65 @@ export class Coordinator {
       }
     }
     const approvals = Object.values(this.s.approvals).filter((a) => a.hostId === host.id && a.status !== 'pending' && !a.delivered);
-    return { tasks, queries, approvals };
+    return { tasks: tasks.map((t) => ({ ...t, peers: this.peersOf(t) })), queries, approvals };
+  }
+
+  /** Other agents in the task's space that its agent may ask for help (none once it has asked enough). */
+  peersOf(task) {
+    if ((task.asks || []).length >= MAX_ASKS || task.parentId) return [];
+    return Object.values(this.s.agents).filter((a) => a.id !== task.agentId && a.spaceIds.includes(task.spaceId))
+      .map((a) => ({ name: a.name, owner: this.s.people[a.ownerId]?.name || 'someone', online: Boolean(this.s.hosts[a.hostId]?.online), apps: Boolean(a.usesApps) }));
+  }
+
+  // ---------- agents asking agents ----------
+
+  /**
+   * An agent stopped to ask another agent in the space (it wrote .larp/ask-<Name>.md). Larp turns the
+   * request into a task for that agent, sent on behalf of the asker's owner, so the other owner approves
+   * it as usual. The asking task waits, and resumes with the answer.
+   */
+  routeAsk(task, ask) {
+    const asker = this.s.agents[task.agentId];
+    const target = Object.values(this.s.agents).find((a) => a.id !== task.agentId && a.spaceIds.includes(task.spaceId) && a.name.toLowerCase() === String(ask.to || '').toLowerCase());
+    const request = String(ask.text || '').trim().slice(0, 8000);
+    if (!target || !request) return false;
+    task.asks ||= [];
+    if (task.asks.length >= MAX_ASKS || task.asks.some((a) => a.text === request)) return false;
+    const child = this.createTask(task.ownerId, {
+      spaceId: task.spaceId, agentId: target.id, kind: task.kind,
+      title: clipText(`${asker.name} asks: ${request.split('\n')[0]}`, 120),
+      instructions: [`${asker.name} (${this.s.people[asker.ownerId]?.name}'s agent) is working on "${task.title}" and asks you:`, '', request, '',
+        'Do what is asked, then reply with a short, clear answer. Your answer and any changes you make go back to them.'].join('\n'),
+    });
+    child.parentId = task.id;
+    child.askedBy = asker.id;
+    task.asks.push({ id: newId('ask'), to: target.name, toId: target.id, text: request, childId: child.id, at: now(), answered: false });
+    this.setTaskStatus(task, 'waiting', task.ownerId, `${asker.name} asked ${target.name}: ${clipText(request, 100)}`);
+    return true;
+  }
+
+  /** The other agent finished (or couldn't): give its answer to the asking task and resume it. */
+  answerParent(child, outcome) {
+    const parent = this.s.tasks[child.parentId];
+    const ask = parent?.asks?.find((a) => a.childId === child.id);
+    if (!parent || !ask || ask.answered) return;
+    const from = this.s.agents[child.agentId]?.name || 'The other agent';
+    ask.answered = true;
+    ask.answer = {
+      ok: outcome === 'done',
+      text: outcome === 'done' ? (child.result?.summary || 'Done.') : outcome === 'denied' ? `${this.s.people[child.ownerId]?.name} declined the request.` : `${from} couldn't finish: ${child.result?.error || 'unknown error'}`,
+      diff: outcome === 'done' ? child.result?.diff || '' : '',
+      files: outcome === 'done' ? child.result?.files || [] : [],
+      repoId: child.repoId || null,
+      at: now(),
+    };
+    if (outcome === 'done') {
+      this.setTaskStatus(child, 'accepted', parent.ownerId, `sent the answer back to ${this.s.agents[parent.agentId]?.name}`);
+      this.memory.handBack(child);
+    }
+    if (parent.status === 'waiting') {
+      this.setTaskStatus(parent, 'queued', parent.ownerId, `${from} answered; ${this.s.agents[parent.agentId]?.name} continues`);
+    }
   }
 
   hostTask(host, taskId) {
@@ -484,6 +554,13 @@ export class Coordinator {
       return { ok: true };
     }
     if (task.status !== 'running') fail(409, 'Task is not running');
+    if (result.ask && !result.error && this.routeAsk(task, result.ask)) {
+      task.log.push({ at: now(), kind: 'note', text: `Asked ${result.ask.to}; waiting for the answer` });
+      const attempt = task.attempts.at(-1);
+      if (attempt) Object.assign(attempt, { finishedAt: now(), asked: result.ask.to });
+      this.changed();
+      return { ok: true, asked: true };
+    }
     const check = result.check ? {
       command: task.check,
       passed: Boolean(result.check.passed),
@@ -512,6 +589,7 @@ export class Coordinator {
       this.setTaskStatus(task, 'needs_review', task.ownerId, `${agentName} ${verdict}`);
     }
     this.memory.outcome(task);
+    if (task.parentId) this.answerParent(task, result.error ? 'failed' : 'done');
     return { ok: true };
   }
 
@@ -545,12 +623,16 @@ export class Coordinator {
   }
 
   detectConflicts(changed) {
+    // Same repository: the same first commit when known, else the same name.
+    const sameRepo = (a, b) => (a.repoId && b.repoId ? a.repoId === b.repoId : Boolean(a.repo) && a.repo === b.repo);
+    // A task and the help it asked another agent for are one piece of work, not a conflict.
+    const related = (a, b) => a.parentId === b.id || b.parentId === a.id;
     const open = Object.values(this.s.tasks).filter((t) =>
-      t.spaceId === changed.spaceId && t.repo && t.repo === changed.repo && ['running', 'needs_review', 'accepted'].includes(t.status) && t.files.length);
+      t.spaceId === changed.spaceId && sameRepo(t, changed) && ['running', 'needs_review', 'accepted'].includes(t.status) && t.files.length);
     for (const task of open) {
       const before = JSON.stringify(task.conflicts);
       task.conflicts = open
-        .filter((other) => other.id !== task.id)
+        .filter((other) => other.id !== task.id && !related(task, other))
         .map((other) => ({ taskId: other.id, files: other.files.filter((f) => task.files.includes(f)) }))
         .filter((c) => c.files.length);
       if (task.conflicts.length && JSON.stringify(task.conflicts) !== before) {
@@ -705,6 +787,7 @@ export class Coordinator {
         .map((t) => ({ id: newId('itm'), text: t.slice(0, 200), ownerId: null, done: false })),
     };
     this.s.checklists[list.id] = list;
+    this.telegram.checklistCreated(list);
     this.store.record({ type: 'checklist.created', spaceId: space.id, actor: personId, text: `started checklist "${list.title}"` });
     this.changed();
     return list;
@@ -725,6 +808,15 @@ export class Coordinator {
     this.store.record({ type: 'checklist.updated', spaceId: list.spaceId, actor: personId, text: `${item.done ? 'completed' : 'updated'} "${item.text}"${item.ownerId ? ` · ${this.s.people[item.ownerId]?.name}` : ''}` });
     this.changed();
     return list;
+  }
+
+  /** The keeper is the first member of a space; they run space-wide settings such as the Telegram bot. */
+  isKeeper(personId) {
+    return Object.values(this.s.spaces).some((sp) => sp.memberIds[0] === personId);
+  }
+
+  keeperOnly(personId) {
+    if (!this.isKeeper(personId)) fail(403, 'Only the person who started the space can change this');
   }
 
   // ---------- agent memory ----------
@@ -796,6 +888,7 @@ export class Coordinator {
       checklists: Object.values(this.s.checklists).filter(inSpaces),
       events: this.s.events.filter(inSpaces).slice(-200),
       memory: this.memory.view(spaceIds, agents),
+      telegram: { ...this.telegram.view(personId), keeper: this.isKeeper(personId) },
     };
   }
 
@@ -840,6 +933,7 @@ export class Coordinator {
   async close() {
     clearInterval(this.heartbeat);
     clearInterval(this.nightly);
+    await this.telegram.stop();
     for (const stream of this.streams) stream.end();
     this.streams.clear();
     if (this.server) {
@@ -957,6 +1051,19 @@ export class Coordinator {
       case 'POST memory/forget': return this.forgetMemory(me.id, body);
       case 'POST memory/sleep': return this.sleepNow(me.id, body);
       case 'GET memory/stats': return this.memoryStats(me.id);
+      case 'POST telegram/connect': this.keeperOnly(me.id); return this.telegram.connect(body.token);
+      case 'POST telegram/disconnect': this.keeperOnly(me.id); return this.telegram.disconnect();
+      case 'POST telegram/link': {
+        // A keeper may make a link for someone in their space (for example a family member without a computer).
+        const personId = body.personId || me.id;
+        if (personId !== me.id) {
+          this.keeperOnly(me.id);
+          if (!Object.values(this.s.spaces).some((sp) => sp.memberIds[0] === me.id && sp.memberIds.includes(personId))) fail(403, 'That person is not in your space');
+        }
+        return this.telegram.linkFor(personId);
+      }
+      case 'POST telegram/invite': return this.telegram.inviteLink(me.id, body.spaceId);
+      case 'POST telegram/unlink': return this.telegram.unlink(me.id);
       case 'POST checklists/:id/items/:item': return this.updateChecklistItem(me.id, b, d, body);
       default: fail(404, 'Unknown route');
     }

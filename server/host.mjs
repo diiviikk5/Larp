@@ -11,11 +11,13 @@ const MAX_PARALLEL = 2;
 const DEFAULT_SHARING = { availability: 'ask', budget: 'ask', calendar: 'never' };
 
 export class Host {
-  constructor({ url, token, dataDir, onChange }) {
+  /** appContext: optional async () => [{ name, kind, text }], the owner's apps as text for agents allowed to read them. */
+  constructor({ url, token, dataDir, onChange, appContext }) {
     this.url = url.replace(/\/$/, '');
     this.token = token;
     this.dataDir = dataDir;
     this.onChange = onChange || (() => {});
+    this.appContext = appContext || null;
     this.config = { agents: {} };
     this.running = new Map();   // taskId -> AbortController
     this.applying = new Set();
@@ -63,6 +65,14 @@ export class Host {
     const known = new Set(this.me.agents.map((a) => a.id));
     for (const id of Object.keys(this.config.agents)) if (!known.has(id)) delete this.config.agents[id];
     await this.saveConfig();
+    // Agents added before repos had an identity get one now.
+    for (const agent of this.me.agents) {
+      const local = this.config.agents[agent.id];
+      if (local?.repoPath && !agent.repoId) {
+        const repoId = await repoIdentity(local.repoPath);
+        if (repoId) await this.api('POST', `agents/${agent.id}/update`, { repoId }).catch(() => {});
+      }
+    }
     this.connect();
     this.fallback = setInterval(() => this.schedulePoll(), 5000);
   }
@@ -160,7 +170,7 @@ export class Host {
 
   // ---------- agents ----------
 
-  async addAgent({ ownerToken, name, runtime, model, spaceIds, repoPath, baseUrl, apiKeyEnv }) {
+  async addAgent({ ownerToken, name, runtime, model, spaceIds, repoPath, baseUrl, apiKeyEnv, codexHome, useApps }) {
     if (repoPath) {
       const inside = (await run('git', ['rev-parse', '--is-inside-work-tree'], { cwd: repoPath })).output.trim();
       if (inside !== 'true') throw new Error('That folder is not a git repository');
@@ -168,10 +178,12 @@ export class Host {
     const agent = await this.api('POST', 'agents', {
       ownerToken, name, runtime, model, spaceIds,
       repo: repoPath ? path.basename(repoPath) : null,
+      repoId: repoPath ? await repoIdentity(repoPath) : null,
+      usesApps: Boolean(useApps),
     });
     this.config.agents[agent.id] = {
       runtime, model: model || null, repoPath: repoPath || null,
-      baseUrl: baseUrl || null, apiKeyEnv: apiKeyEnv || null,
+      baseUrl: baseUrl || null, apiKeyEnv: apiKeyEnv || null, codexHome: codexHome || null, useApps: Boolean(useApps),
       private: { calendar: [], availability: {}, budget: null },
       sharing: { ...DEFAULT_SHARING },
     };
@@ -185,8 +197,9 @@ export class Host {
     if (!local) throw new Error('Agent is not on this host');
     const shared = {};
     for (const key of ['runtime', 'model']) if (key in patch) { local[key] = patch[key]; shared[key] = patch[key]; }
+    if ('useApps' in patch) { local.useApps = Boolean(patch.useApps); shared.usesApps = local.useApps; }
     if ('spaceIds' in patch) shared.spaceIds = patch.spaceIds;
-    for (const key of ['baseUrl', 'apiKeyEnv']) if (key in patch) local[key] = patch[key];
+    for (const key of ['baseUrl', 'apiKeyEnv', 'codexHome']) if (key in patch) local[key] = patch[key];
     if (patch.private) local.private = { ...local.private, ...patch.private };
     if (patch.sharing) local.sharing = { ...local.sharing, ...patch.sharing };
     if (Object.keys(shared).length) await this.api('POST', `agents/${agentId}/update`, shared);
@@ -221,8 +234,15 @@ export class Host {
       if (!local) throw new Error('This agent has no local configuration on this host');
       const workdir = await this.prepareWorkdir(task, local);
       await log('note', local.repoPath ? `Working on branch larp/${task.id} in an isolated worktree` : 'Working in an isolated folder');
+      await this.applyAnswers(task, local, workdir, log);
+      // The owner's own apps (Swasthya, Kosh), read on this computer for agents the owner allowed.
+      let apps = [];
+      if (local.useApps && this.appContext) {
+        apps = await this.appContext().catch((error) => { log('note', `Couldn't read your apps: ${error.message}`); return []; });
+        if (apps.length) await log('note', `Read ${apps.map((a) => a.name).join(' and ')} for this task`);
+      }
       const { summary } = await runAgent(local.runtime, {
-        prompt: this.buildPrompt(task),
+        prompt: this.buildPrompt(task, apps),
         cwd: workdir,
         config: local,
         signal: controller.signal,
@@ -230,9 +250,16 @@ export class Host {
         requestApproval: (title, detail) => this.requestApproval({ taskId: task.id, title, detail, kind: 'tool' }),
       });
       if (controller.signal.aborted) return;
+      const ask = await readAsk(workdir, task);
+      if (ask) {
+        await log('say', `Asking ${ask.to}: ${ask.text.slice(0, 300)}`);
+        await this.api('POST', `tasks/${task.id}/result`, { summary, ask });
+        return;
+      }
       const result = { summary };
       if (local.repoPath) {
-        await git(workdir, ['add', '-A']);
+        // .larp/ holds Larp's own notes (questions to other agents); it is never part of the change.
+        await git(workdir, ['add', '-A', '--', '.', ':(exclude).larp']);
         result.files = (await git(workdir, ['diff', '--cached', '--name-only', 'HEAD'])).split('\n').map((f) => f.trim()).filter(Boolean);
         result.stat = await git(workdir, ['diff', '--cached', '--stat', 'HEAD']);
         result.diff = await git(workdir, ['diff', '--cached', '--binary', 'HEAD']);
@@ -257,8 +284,33 @@ export class Host {
     }
   }
 
-  buildPrompt(task) {
+  /** Before (re)running, apply the changes other agents made when they answered, once each. */
+  async applyAnswers(task, local, workdir, log) {
+    for (const ask of task.asks || []) {
+      if (!ask.answered || !ask.answer?.diff || !local.repoPath) continue;
+      const marker = path.join(workdir, '.larp', `applied-${ask.childId}`);
+      if (await fs.access(marker).then(() => true, () => false)) continue;
+      const mine = await repoIdentity(local.repoPath);
+      if (ask.answer.repoId && mine && ask.answer.repoId !== mine) { await log('note', `${ask.to} worked in a different repository; its changes are described, not applied`); continue; }
+      const patch = path.join(workdir, '.larp', `answer-${ask.childId}.patch`);
+      await fs.mkdir(path.dirname(patch), { recursive: true });
+      await fs.writeFile(patch, ask.answer.diff.endsWith('\n') ? ask.answer.diff : ask.answer.diff + '\n');
+      try {
+        await git(workdir, ['apply', '--3way', patch]);
+        await log('tool', `applied ${ask.to}'s changes: ${(ask.answer.files || []).join(', ')}`);
+      } catch (error) {
+        await log('note', `Couldn't apply ${ask.to}'s changes automatically: ${String(error.message).slice(0, 200)}`);
+      }
+      await fs.writeFile(marker, new Date().toISOString());
+    }
+  }
+
+  buildPrompt(task, apps = []) {
     const parts = [`Task: ${task.title}`, '', task.instructions];
+    if (task.kind === 'general') parts.push('', 'This task wants an answer, not code changes: do not edit files. Reply with a clear, complete answer.');
+    for (const app of apps) {
+      parts.push('', `From your owner's ${app.name} app (${app.kind}; private to them, use it only for this task):`, app.text);
+    }
     const items = task.context?.items || [];
     const section = (title, list) => { if (list.length) parts.push('', title, ...list.map((i) => `- ${i.text}`)); };
     section('What you remember from earlier work (from your memory in Meko):', items.filter((i) => i.source === 'memory'));
@@ -266,6 +318,19 @@ export class Host {
     section('Knowledge this space has agreed on:', items.filter((i) => i.source === 'space'));
     section("Skills and apps that may help (from your team's libraries in Meko):", items.filter((i) => i.source === 'skill' || i.source === 'app'));
     if (items.length) parts.push('Use these only where they apply to this task.');
+    const answered = (task.asks || []).filter((a) => a.answered);
+    if (answered.length) {
+      parts.push('', 'Answers from other agents you asked (their file changes, if any, are already in your workspace):');
+      for (const a of answered) parts.push(`- You asked ${a.to}: ${a.text.slice(0, 400)}`, `  ${a.to} replied: ${a.answer.text.slice(0, 3000)}`);
+      parts.push('Continue the task using these answers. Do not ask the same thing again.');
+    }
+    if (task.peers?.length) {
+      parts.push('', 'Other agents in this space you can ask for help (each works for a different person, on their own computer):',
+        ...task.peers.map((p) => `- ${p.name}, ${p.owner}'s agent${p.apps ? `; it can read ${p.owner}'s health and money apps (Swasthya, Kosh)` : ''}${p.online ? '' : ' (offline right now)'}`),
+        'To ask one, create the file .larp/ask-<Name>.md (for example .larp/ask-' + task.peers[0].name + '.md) containing exactly what you need,',
+        'then stop and finish your turn. Larp delivers it, their owner approves, and you are resumed in this same workspace with their answer.',
+        'Only ask when the task calls for it or the other agent knows something you do not (their owner\'s apps, data or part of the work).');
+    }
     if (task.check) parts.push('', `When you finish, Larp will run this check in the workspace: ${task.check}`, 'Make it pass. Do not modify the check itself unless asked.');
     const last = task.attempts.length ? task.result : null;
     if (last?.check && !last.check.passed) parts.push('', 'The previous attempt failed the check. Output:', last.check.output.slice(-3000));
@@ -293,8 +358,8 @@ export class Host {
   async applyTask(task) {
     this.applying.add(task.id);
     try {
-      const local = Object.values(this.config.agents).find((a) => a.repoPath && path.basename(a.repoPath) === task.repo);
-      if (!local) throw new Error(`No agent on this host has a repository named ${task.repo}`);
+      const local = await this.localRepoFor(task);
+      if (!local) throw new Error(`None of the agents on this computer has a copy of ${task.repo || 'this repository'}. Add an agent with that repository, then accept again.`);
       if (!task.result?.diff) throw new Error('The result has no changes to apply');
       const branch = `larp/accepted-${task.id.slice(-6)}`;
       const dir = path.join(this.dataDir, 'applied', task.id);
@@ -311,6 +376,13 @@ export class Host {
     } finally {
       this.applying.delete(task.id);
     }
+  }
+
+  /** This computer's copy of a task's repository: the same first commit, or failing that the same folder name. */
+  async localRepoFor(task) {
+    const withRepo = Object.values(this.config.agents).filter((a) => a.repoPath);
+    if (task.repoId) for (const a of withRepo) if (await repoIdentity(a.repoPath) === task.repoId) return a;
+    return withRepo.find((a) => path.basename(a.repoPath) === task.repo) || null;
   }
 
   // ---------- scoped questions from the home circle ----------
@@ -370,4 +442,28 @@ export class Host {
   status() {
     return { online: this.online, hostId: this.me?.host.id, running: [...this.running.keys()], agents: this.config.agents };
   }
+}
+
+/** A repository's identity: its first commit. The same for every clone, whatever the folder is called. */
+const identities = new Map();
+async function repoIdentity(repoPath) {
+  if (!identities.has(repoPath)) {
+    const out = await git(repoPath, ['rev-list', '--max-parents=0', 'HEAD']).catch(() => '');
+    identities.set(repoPath, out.split('\n').map((l) => l.trim()).filter(Boolean).sort()[0] || null);
+  }
+  return identities.get(repoPath);
+}
+
+/** A question the agent left for another agent: .larp/ask-<Name>.md. Read once, then removed. */
+async function readAsk(workdir, task) {
+  const dir = path.join(workdir, '.larp');
+  const files = await fs.readdir(dir).catch(() => []);
+  const file = files.find((f) => /^ask-[\w .-]+\.md$/i.test(f));
+  if (!file) return null;
+  const text = (await fs.readFile(path.join(dir, file), 'utf8')).trim();
+  await fs.rm(path.join(dir, file), { force: true });
+  const to = file.slice(4, -3).trim();
+  if (!text || !(task.peers || []).some((p) => p.name.toLowerCase() === to.toLowerCase())) return null;
+  if ((task.asks || []).some((a) => a.text === text.slice(0, 8000))) return null; // already answered
+  return { to, text: text.slice(0, 8000) };
 }

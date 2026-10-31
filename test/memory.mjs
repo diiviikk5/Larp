@@ -91,9 +91,13 @@ try {
   assert.ok(![...fake.packs.values()].some((p) => p.name === 'test-apps'), 'a missing library is not created');
   ok('Sol was shown the Test Driven Development skill from the skills library; no apps library was created');
   await until(() => [...fake.memories.values()].some((m) => m.text.includes('Look at the add function')), 'outcome remembered');
-  const solPack = [...fake.packs.values()].find((p) => p.name.startsWith('test-agent-sol-'));
-  assert.ok(solPack, 'Sol has its own datapack');
-  ok(`Sol recalled before working, and remembered the outcome in ${solPack.name}`);
+  // One datapack for the team; each agent's memory sits under its own agent_id in it.
+  const spacePack = [...fake.packs.values()].find((p) => p.name === 'test-team');
+  const isSol = (m) => m.datapack_id === spacePack.id && m.agent_id?.startsWith('agent-sol-');
+  const isByte = (m) => m.datapack_id === spacePack.id && m.agent_id?.startsWith('agent-byte-');
+  assert.ok(![...fake.packs.values()].some((p) => /^test-(agent|space|proofs)/.test(p.name)), 'no datapack per agent or space');
+  assert.ok([...fake.memories.values()].some(isSol), 'Sol has its own memory in the space');
+  ok(`Sol recalled before working, and remembered the outcome under its own key in ${spacePack.name}`);
 
   step('Delegation: Sol hands its notes to Arjun\'s agent Byte');
   t = await api(divik, 'POST', 'tasks', { spaceId: build, agentId: byte.id, title: 'Fix the add function in math.js', check: 'node test.mjs', instructions: 'The add function in math.js is wrong; fix add.' });
@@ -103,8 +107,7 @@ try {
   const handoff = t.context.items.find((i) => i.source === 'handoff');
   assert.ok(handoff, 'Byte got a hand-off note from Sol');
   assert.match(handoff.text, /Hand-off from Divik's agent Sol/);
-  const bytePack = [...fake.packs.values()].find((p) => p.name.startsWith('test-agent-byte-'));
-  assert.ok([...fake.memories.values()].some((m) => m.datapack_id === bytePack.id && m.text.startsWith('Hand-off from')), 'note stored in Byte\'s datapack');
+  assert.ok([...fake.memories.values()].some((m) => isByte(m) && m.text.startsWith('Hand-off from')), 'note stored in Byte\'s memory');
   assert.equal(t.result.check.passed, false, 'no fix instructions yet');
   ok('Sol\'s notes were written into Byte\'s datapack and shown to Byte');
 
@@ -116,7 +119,7 @@ try {
   await api(divik, 'POST', `tasks/${t.id}/accept`, { lesson: `demo-app add bug: when add tests fail, ${fix}` });
   const lesson = await until(async () => (await state(divik)).memory.lessons.find((l) => l.status === 'promoted'), 'lesson promoted');
   assert.ok(fake.memories.get(lesson.memoryId).promoted);
-  assert.ok([...fake.memories.values()].some((m) => m.datapack_id === solPack.id && m.text.includes("Arjun's agent Byte did")), 'Byte handed the outcome back to Sol');
+  assert.ok([...fake.memories.values()].some((m) => isSol(m) && m.text.includes("Arjun's agent Byte did")), 'Byte handed the outcome back to Sol');
   ok('Lesson promoted in the space datapack; Byte handed the result back to Sol');
 
   const trial = async () => {
@@ -157,11 +160,11 @@ try {
   ok(`Proof ${withMemory.proof.hash.slice(0, 12)}… matches the accepted task's proof; Meko returned the first task's artifact`);
 
   step('Agents sleep: duplicates merged, stale hand-offs forgotten');
-  const byteMem = [...fake.memories.values()].filter((m) => m.datapack_id === bytePack.id);
+  const byteMem = [...fake.memories.values()].filter(isByte);
   const fb = byteMem.find((m) => m.text.includes('asked for a change'));
   const twin = `${fb.text} `;
   fake.memories.set('mem_twin', { ...fb, id: 'mem_twin', text: twin, created_at: new Date(Date.now() - 3600_000).toISOString() });
-  fake.memories.set('mem_old_handoff', { id: 'mem_old_handoff', datapack_id: bytePack.id, text: 'Hand-off from Divik\'s agent Sol for "an old task": notes', agent_id: 'Sol', created_at: new Date(Date.now() - 14 * 86400000).toISOString() });
+  fake.memories.set('mem_old_handoff', { id: 'mem_old_handoff', datapack_id: spacePack.id, text: 'Hand-off from Divik\'s agent Sol for "an old task": notes', agent_id: fb.agent_id, created_at: new Date(Date.now() - 14 * 86400000).toISOString() });
   const digest = await api(divik, 'POST', 'memory/sleep', { agentId: byte.id });
   assert.ok(digest.merged.length >= 1, 'merged the duplicate');
   assert.ok(digest.forgot.some((f) => f.id === 'mem_old_handoff'), 'forgot the two-week-old hand-off');

@@ -14,8 +14,16 @@ Larp is a shared workspace where each person's AI agents run on that person's ma
 
 | Datapack | Written by | Read by | Holds |
 |---|---|---|---|
-| `<team>-agent-<name>-xxxx`, one per agent | That agent; other agents leave notes in it | That agent | What it did, reviewer feedback, hand-off notes from other agents |
-| `<team>-space-<name>-xxxx`, one per space | Lessons a person proposed | Every agent in the space | Knowledge a person approved, promoted with `memory_promote` |
+| `<team>-team`, one for the whole team | Everyone's agents and lessons, each under its own `agent_id` | See below | Everything Larp remembers, plus result proofs |
+
+Inside that one datapack, Meko keeps a separate memory collection per `agent_id`:
+
+| `agent_id` | Written by | Recalled by | Holds |
+|---|---|---|---|
+| `agent-<name>-xxxx`, one per agent | That agent; other agents leave notes under it | That agent | What it did, reviewer feedback, hand-off notes from other agents |
+| `space-<name>-xxxx`, one per space | Lessons a person proposed | Every agent in the space | Knowledge a person approved, promoted with `memory_promote`; tagged with its space so other spaces never see it |
+
+One datapack keeps Larp within Meko's free tier, which allows very few datapacks (a datapack per agent hit `FREE_TIER_DATAPACK_LIMIT`).
 
 Private home data (calendars, budgets, availability) never goes to Meko. It stays on the owner's machine, and only answers the owner approved are shared.
 
@@ -23,8 +31,8 @@ Private home data (calendars, budgets, availability) never goes to Meko. It stay
 
 | When | Meko tool | Where in the code |
 |---|---|---|
-| Before a task runs: the agent recalls its own memory and the space's knowledge | `memory_search` ×2 | `Memory.prepare`, `server/memory.mjs` |
-| Delegated task: the requester's agent recalls what it knows about the topic and writes a hand-off note into the working agent's datapack | `memory_search`, `memory_add` into another agent's datapack | `Memory.prepare` |
+| Before a task runs: the agent recalls its own memory and the space's knowledge | `context_search` ×2 (plus `knowledgebase_search` in the skills and apps libraries) | `Memory.prepare`, `server/memory.mjs` |
+| Delegated task: the requester's agent recalls what it knows about the topic and writes a hand-off note into the working agent's datapack | `context_search`, `memory_add` into another agent's datapack | `Memory.prepare` |
 | After a result: the exchange is saved and Meko extracts durable facts | `conversation_add_message` | `Memory.outcome` |
 | Reviewer asks for a change: the feedback is kept for that agent's future work | `memory_add` | `Memory.feedback` |
 | Delegated work accepted: the working agent hands the outcome back to the requester's agents | `memory_add` into another agent's datapack | `Memory.handBack` |

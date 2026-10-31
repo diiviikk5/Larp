@@ -100,6 +100,7 @@ export function TaskDetail({ ctx, id, tab: initialTab, onBack }: { ctx: Ctx; id:
               <dt>Repository</dt><dd className="mono">{task.repo || '—'}</dd>
             </dl>
           </SideSection>
+          <AgentTalk ctx={ctx} task={task} />
           <MemorySection ctx={ctx} task={task} />
           <ProofSection ctx={ctx} task={task} />
           {canAccept && memoryOn && (
@@ -196,6 +197,48 @@ function ProofSection({ ctx, task }: { ctx: Ctx; task: Task }) {
           Identical to {first ? <strong>“{first.title}”</strong> : 'an earlier result'}{first ? ` by ${ctx.state.agents.find((a) => a.id === first.agentId)?.name}` : ''}: Meko already held this exact change.
         </button>
       )}
+    </SideSection>
+  );
+}
+
+/**
+ * Agents asking agents: what this task's agent asked others and what they answered, or, for a request
+ * from another agent, which task it came from.
+ */
+function AgentTalk({ ctx, task }: { ctx: Ctx; task: Task }) {
+  const { state } = ctx;
+  const asker = task.askedBy ? state.agents.find((a) => a.id === task.askedBy) : null;
+  const parent = task.parentId ? state.tasks.find((t) => t.id === task.parentId) : null;
+  if (!task.asks?.length && !parent) return null;
+  const agent = state.agents.find((a) => a.id === task.agentId);
+  const ownerOf = (agentId?: string) => state.people.find((p) => p.id === state.agents.find((a) => a.id === agentId)?.ownerId)?.name;
+  return (
+    <SideSection label="Agent conversation">
+      {parent && (
+        <button className="talk-link" onClick={() => ctx.go({ page: 'task', id: parent.id })}>
+          Request from <strong>{asker?.name || 'another agent'}</strong> ({ownerOf(asker?.id)}’s), working on “{parent.title}”. The answer goes back to it.
+        </button>
+      )}
+      <ol className="talk">
+        {(task.asks || []).map((a) => {
+          const child = state.tasks.find((t) => t.id === a.childId);
+          return (
+            <li key={a.id}>
+              <p className="talk-q"><strong>{agent?.name}</strong> asked <strong>{a.to}</strong> <span className="faint">({ownerOf(a.toId)}’s agent)</span></p>
+              <blockquote>{a.text.length > 280 ? `${a.text.slice(0, 279)}…` : a.text}</blockquote>
+              {a.answered && a.answer ? (
+                <>
+                  <p className="talk-a"><strong>{a.to}</strong> {a.answer.ok ? 'answered' : 'couldn’t help'}{a.answer.files.length ? ` and changed ${a.answer.files.join(', ')}` : ''}:</p>
+                  <blockquote className={a.answer.ok ? '' : 'bad'}>{a.answer.text.length > 400 ? `${a.answer.text.slice(0, 399)}…` : a.answer.text}</blockquote>
+                </>
+              ) : (
+                <p className="faint small">{child?.status === 'awaiting_approval' ? `Waiting for ${ownerOf(a.toId)} to approve` : `${a.to} is working on it`}…</p>
+              )}
+              {child && <button className="link-btn" onClick={() => ctx.go({ page: 'task', id: child.id })}>Open {a.to}’s task</button>}
+            </li>
+          );
+        })}
+      </ol>
     </SideSection>
   );
 }
