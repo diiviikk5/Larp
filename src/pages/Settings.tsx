@@ -244,7 +244,7 @@ function AboutTab({ ctx }: { ctx: Ctx }) {
   return (
     <Card title="About Larp">
       <dl className="props wide">
-        <dt>Version</dt><dd>0.6.1</dd>
+        <dt>Version</dt><dd>0.6.2</dd>
         <dt>Signed in as</dt><dd>{ctx.state.me.name}</dd>
         <dt>Spaces</dt><dd>{ctx.state.spaces.length}</dd>
       </dl>

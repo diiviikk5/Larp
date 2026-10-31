@@ -37,13 +37,17 @@ try {
   await page.locator('.sidebar .nav-item', { hasText: 'Apps' }).click();
   await page.waitForTimeout(1500);
   await page.screenshot({ path: path.join(out, 'apps-tiles.png') });
-  for (const name of ['Citylines', 'Swasthya', 'Kosh']) {
+  for (const name of ['Swasthya', 'Kosh', 'Citylines', 'EduSpace', 'Studio']) {
     await page.locator('.sidebar .nav-item', { hasText: 'Apps' }).click();
     await page.locator('.app-tile', { hasText: name }).locator('button', { hasText: 'Open in Larp' }).click();
-    await page.waitForTimeout(2500);
+    await page.locator('iframe.app-frame').waitFor({ timeout: 10000 });
+    await page.waitForTimeout(3500);
+    // The app's own interface must render inside the frame, not just an empty box.
+    const frame = page.frameLocator('iframe.app-frame');
+    const text = (await frame.locator('body').innerText({ timeout: 10000 })).replace(/\s+/g, ' ').trim();
     await page.screenshot({ path: path.join(out, `app-${name.toLowerCase()}.png`) });
-    assert.ok(await page.locator('.app-view, .app-frame').count(), `${name} opened inside Larp`);
-    console.log(`✓ ${name}: Open in Larp shows the app`);
+    assert.ok(text.length > 80, `${name}'s full interface rendered (${text.length} characters)`);
+    console.log(`✓ ${name}: full app inside Larp · "${text.slice(0, 70)}…"`);
   }
   console.log('errors:', errors.length ? errors.slice(0, 5) : 'none');
 } finally {

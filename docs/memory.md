@@ -14,8 +14,16 @@ Larp is a shared workspace where each person's AI agents run on that person's ma
 
 | Datapack | Written by | Read by | Holds |
 |---|---|---|---|
-| `<team>-agent-<name>-xxxx`, one per agent | That agent; other agents leave notes in it | That agent | What it did, reviewer feedback, hand-off notes from other agents |
-| `<team>-space-<name>-xxxx`, one per space | Lessons a person proposed | Every agent in the space | Knowledge a person approved, promoted with `memory_promote` |
+| `<team>-team`, one for the whole team | Everyone's agents and lessons, each under its own `agent_id` | See below | Everything Larp remembers, plus result proofs |
+
+Inside that one datapack, Meko keeps a separate memory collection per `agent_id`:
+
+| `agent_id` | Written by | Recalled by | Holds |
+|---|---|---|---|
+| `agent-<name>-xxxx`, one per agent | That agent; other agents leave notes under it | That agent | What it did, reviewer feedback, hand-off notes from other agents |
+| `space-<name>-xxxx`, one per space | Lessons a person proposed | Every agent in the space | Knowledge a person approved, promoted with `memory_promote`; tagged with its space so other spaces never see it |
+
+One datapack keeps Larp within Meko's free tier, which allows very few datapacks (a datapack per agent hit `FREE_TIER_DATAPACK_LIMIT`).
 
 Private home data (calendars, budgets, availability) never goes to Meko. It stays on the owner's machine, and only answers the owner approved are shared.
 

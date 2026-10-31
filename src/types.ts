@@ -49,6 +49,8 @@ export type MekoCall = {
   id: string; at: string; tool: string; kind: 'write' | 'recall' | 'promote' | 'correct' | 'forget' | 'setup' | 'other';
   agent: string | null; agentId: string | null; to: string | null; toId: string | null; datapack: string | null;
   spaceId: string | null; taskId: string | null; summary: string; ok: boolean; skipped: boolean; ms: number; error: string | null; resultCount: number | null;
+  /** The call was about the space's shared knowledge (lessons). */
+  space?: boolean;
 };
 
 export type Lesson = { id: string; spaceId: string; taskId: string | null; text: string; proposedBy: string; approvedBy?: string; status: 'pending' | 'approved' | 'promoted' | 'declined'; memoryId?: string; createdAt: string };

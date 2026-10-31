@@ -25,9 +25,10 @@ export async function startFakeMeko({ token = 'test-token' } = {}) {
       .filter((d) => d.score >= 0.2).sort((a, b) => b.score - a.score).slice(0, limit);
   };
   const meta = (m) => { try { return typeof m === 'string' ? JSON.parse(m) : m || null; } catch { return null; } };
-  const search = (datapack_id, query, limit) => {
+  const mine = (m, datapack_id, agent_id, shared) => m.datapack_id === datapack_id && (!agent_id || m.agent_id === agent_id || (shared && m.promoted));
+  const search = (datapack_id, query, limit, agent_id, shared = false) => {
     const q = words(query);
-    return [...memories.values()].filter((m) => m.datapack_id === datapack_id)
+    return [...memories.values()].filter((m) => mine(m, datapack_id, agent_id, shared))
       .map((m) => { const w = words(m.text); const hit = [...q].filter((x) => w.has(x)).length; return { ...m, memory: m.text, score: q.size ? hit / q.size : 0 }; })
       .filter((m) => m.score > 0).sort((a, b) => b.score - a.score).slice(0, limit);
   };
@@ -49,16 +50,16 @@ export async function startFakeMeko({ token = 'test-token' } = {}) {
       memories.set(m.id, m);
       return { conversation_id: 'conv_test', queued: true };
     },
-    memory_search: ({ datapack_id, query, limit = 5 }) => {
+    memory_search: ({ datapack_id, query, limit = 5, agent_id }) => {
       const q = words(query);
-      const results = [...memories.values()].filter((m) => m.datapack_id === datapack_id)
+      const results = [...memories.values()].filter((m) => mine(m, datapack_id, agent_id, false))
         .map((m) => { const w = words(m.text); const hit = [...q].filter((x) => w.has(x)).length; return { ...m, memory: m.text, score: q.size ? hit / q.size : 0 }; })
         .filter((m) => m.score > 0).sort((a, b) => b.score - a.score).slice(0, limit);
       return { results };
     },
     // Shapes follow real Meko: buckets, token_savings, match_quality; memories carry metadata and their writer.
-    context_search: ({ datapack_id, query, limit = 5, force_source = 'auto' }) => {
-      const hits = force_source === 'knowledge_base' ? [] : search(datapack_id, query, limit);
+    context_search: ({ datapack_id, query, limit = 5, force_source = 'auto', agent_id }) => {
+      const hits = force_source === 'knowledge_base' ? [] : search(datapack_id, query, limit, agent_id, force_source === 'auto');
       const docs = force_source === 'memory' ? [] : kb(datapack_id, query, limit);
       const sent = hits.reduce((n, m) => n + Math.ceil(m.text.length / 4), 0);
       return {
@@ -73,8 +74,8 @@ export async function startFakeMeko({ token = 'test-token' } = {}) {
       const scored = documents.filter((d) => d.datapack_id === datapack_id).map((d) => { const w = words(d.text); return { d, s: q.size ? [...q].filter((x) => w.has(x)).length / q.size : 0 }; });
       return { results: scored.sort((a, b) => b.s - a.s).slice(0, limit).map(({ d, s }) => ({ id: d.id, chunk_text: d.text, document_id: d.document_id, distance: s >= 0.2 ? 0.6 : 0.95, match_type: s >= 0.2 ? 'hybrid' : 'semantic' })) };
     },
-    memory_get_all: ({ datapack_id }) => {
-      const list = [...memories.values()].filter((m) => m.datapack_id === datapack_id).map((m) => ({ id: m.id, data: m.text, agent_id: m.agent_id, created_at: m.created_at }));
+    memory_get_all: ({ datapack_id, agent_id }) => {
+      const list = [...memories.values()].filter((m) => mine(m, datapack_id, agent_id, false)).map((m) => ({ id: m.id, data: m.text, agent_id: m.agent_id, created_at: m.created_at }));
       return { memories: list, total: list.length, page: 1, total_pages: 1 };
     },
     artifact_put: ({ filename, content_base64, content_type }) => {
