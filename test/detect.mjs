@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'larp-detect-'));
-const env = { ...process.env, LARP_DATA_DIR: dir, LARP_NO_SPLASH: '1' };
+const env = { ...process.env, MEKO_API_KEY: '', LARP_DATA_DIR: dir, LARP_NO_SPLASH: '1' };
 delete env.ELECTRON_RUN_AS_NODE;
 const app = await electron.launch({ args: ['.'], env });
 const page = await app.firstWindow();

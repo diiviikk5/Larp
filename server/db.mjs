@@ -48,7 +48,8 @@ ALTER TABLE larp_meko_calls ADD COLUMN IF NOT EXISTS saved integer;
 
 export class Yugabyte {
   constructor(url) {
-    const options = { connectionString: url, max: Number(process.env.YUGABYTE_POOL) || 4 };
+    // Give up on an unreachable cluster quickly (Larp then uses local files) instead of stalling startup.
+    const options = { connectionString: url, max: Number(process.env.YUGABYTE_POOL) || 4, connectionTimeoutMillis: 8000 };
     // YugabyteDB Aeon serves TLS signed by its own CA: YUGABYTE_CA points to the root.crt it gives you.
     // On a hosted server there is no file to point at, so the certificate can come as text instead.
     // Pasted into a one-line env field, its line breaks may arrive as literal "\n".

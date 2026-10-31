@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { _electron as electron } from '@playwright/test';
 
 const data = await fs.mkdtemp(path.join(os.tmpdir(), 'larp-switch-'));
-const app = await electron.launch({ args: ['.'], env: { ...process.env, LARP_DATA_DIR: data, LARP_NO_SPLASH: '1' } });
+const app = await electron.launch({ args: ['.'], env: { ...process.env, MEKO_API_KEY: '', LARP_DATA_DIR: data, LARP_NO_SPLASH: '1' } });
 try {
   const page = await app.firstWindow();
   await page.waitForFunction(() => Boolean(window.larp));

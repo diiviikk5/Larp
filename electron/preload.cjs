@@ -12,10 +12,19 @@ contextBridge.exposeInMainWorld('larp', {
   updateAgent: call('updateAgent'),
   removeAgent: call('removeAgent'),
   chooseFolder: call('chooseFolder'),
+  createDemoProject: call('createDemoProject'),
+  updateStatus: call('updateStatus'),
+  installUpdate: call('installUpdate'),
+  onUpdate: (fn) => {
+    const listener = (_event, info) => fn(info);
+    ipcRenderer.on('larp:update', listener);
+    return () => ipcRenderer.removeListener('larp:update', listener);
+  },
   setLan: call('setLan'),
   setSplash: call('setSplash'),
   setTitleBar: call('setTitleBar'),
   detectRuntimes: call('detectRuntimes'),
+  codexProfile: call('codexProfile'),
   openExternal: call('openExternal'),
   appsList: call('appsList'),
   appsConnect: call('appsConnect'),

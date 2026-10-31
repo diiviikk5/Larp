@@ -12,6 +12,9 @@ import { runHermes } from './hermes.mjs';
 
 const MODEL = /^[\w.:\-/]{1,80}$/;
 
+/** The Codex CLI to run: LARP_CODEX (a full path, for a copy installed elsewhere) or `codex` on the PATH. */
+export const codexCommand = () => process.env.LARP_CODEX || 'codex';
+
 /** The environment for a child agent CLI, minus markers that make it think it is nested in another session. */
 function cleanEnv() {
   const env = { ...process.env };
@@ -146,8 +149,9 @@ async function runCodexOnce({ prompt, cwd, config, onLog, signal }, overrides) {
   args.push('-');
   let summary = '';
   let failed = null;
-  const { exitCode, stderr } = await jsonLines('codex', args, {
-    cwd, input: prompt, signal, env: cleanEnv(),
+  const { exitCode, stderr } = await jsonLines(codexCommand(), args, {
+    // A separate Codex profile (its own sign-in and config) when the agent has one; otherwise the computer's own.
+    cwd, input: prompt, signal, env: config.codexHome ? { ...cleanEnv(), CODEX_HOME: config.codexHome } : cleanEnv(),
     // codex is an npm .cmd shim on Windows, which needs a shell. Arguments are fixed or validated above.
     shell: process.platform === 'win32',
     onJson: (msg) => {

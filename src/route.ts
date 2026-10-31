@@ -12,14 +12,14 @@ export type Route =
   | { page: 'activity' }
   | { page: 'memory' }
   | { page: 'apps' }
-  | { page: 'app'; id: 'swasthya' | 'kosh' | 'citylines'; tab?: 'overview' | 'full' }
+  | { page: 'app'; id: 'swasthya' | 'kosh' | 'citylines' | 'eduspace' | 'studio'; tab?: 'overview' | 'full' }
   | { page: 'settings'; tab?: SettingsTab }
   | { page: 'plans'; id?: string }
   | { page: 'money' }
   | { page: 'care'; id?: string };
 
 export type TaskFilter = 'all' | 'mine' | 'active' | 'review' | 'done';
-export type SettingsTab = 'device' | 'network' | 'phones' | 'appearance' | 'about';
+export type SettingsTab = 'device' | 'network' | 'phones' | 'telegram' | 'appearance' | 'about';
 
 /** Everything a page needs: data, the current space, this device, and navigation. */
 export type Ctx = {

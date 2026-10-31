@@ -17,7 +17,7 @@ import { Agents, AgentDetail, AgentNew } from './pages/Agents';
 import { People } from './pages/People';
 import { ActivityPage } from './pages/Activity';
 import { MemoryPage } from './pages/Memory';
-import { AppsPage, AppView } from './pages/Apps';
+import { APP_NAMES, AppsPage, AppView } from './pages/Apps';
 import { OceanBackdrop, OceanHome, OceanMenuButton } from './ocean/Ocean';
 import { Settings } from './pages/Settings';
 import { Plans } from './pages/Plans';
@@ -205,7 +205,7 @@ function crumbsFor(route: Route, state: State, space: Space): { label: string; r
     case 'agent': return [base, { label: 'Agents', route: { page: 'agents' } }, { label: state.agents.find((a) => a.id === route.id)?.name || 'Agent' }];
     case 'agent-new': return [base, { label: 'Agents', route: { page: 'agents' } }, { label: 'Add agent' }];
     case 'plans': return [base, { label: 'Plans', route: { page: 'plans' } }, ...(route.id ? [{ label: state.plans.find((p) => p.id === route.id)?.title || 'Plan' }] : [])];
-    case 'app': return [base, { label: 'Apps', route: { page: 'apps' } }, { label: route.id === 'kosh' ? 'Kosh' : route.id === 'citylines' ? 'Citylines' : 'Swasthya' }];
+    case 'app': return [base, { label: 'Apps', route: { page: 'apps' } }, { label: APP_NAMES[route.id] || 'App' }];
     case 'care': return [base, { label: 'Care', route: { page: 'care' } }, ...(route.id ? [{ label: state.checklists.find((c) => c.id === route.id)?.title || 'Checklist' }] : [])];
     default: return [base, { label: route.page[0].toUpperCase() + route.page.slice(1) }];
   }
@@ -424,7 +424,7 @@ function useTitleBar(look: unknown) {
 }
 
 const TONE: Record<string, string> = {
-  awaiting_approval: 'warn', running: 'run', applying: 'run', queued: 'idle', revision_requested: 'idle',
+  awaiting_approval: 'warn', running: 'run', applying: 'run', waiting: 'run', queued: 'idle', revision_requested: 'idle',
   needs_review: 'review', failed: 'bad', interrupted: 'bad', apply_failed: 'bad', applied: 'done', accepted: 'done', denied: 'idle', cancelled: 'idle',
 };
 

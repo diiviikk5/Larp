@@ -14,7 +14,9 @@ const KIND = {
 
 // Tools that require a conversation_id from conversation_create (Meko uses it to nest traces).
 const NEEDS_CONVERSATION = new Set(['memory_add', 'memory_search', 'memory_promote', 'memory_update', 'memory_delete_by_id',
-  'memory_get_all', 'conversation_add_message', 'context_search', 'knowledgebase_search', 'artifact_put', 'artifact_get']);
+  'memory_get_all', 'conversation_add_message', 'context_search', 'knowledgebase_search', 'artifact_put', 'artifact_get',
+  // Live Meko also refuses these without one, although their schemas mark it optional.
+  'datapack_search', 'datapack_create']);
 
 export class Meko {
   constructor({ apiKey, url = 'https://mcp.mekodata.ai/mcp', team = 'larp', enabled = true, onCall } = {}) {
@@ -40,7 +42,7 @@ export class Meko {
     if (this.client) return this.client;
     if (this.connecting) return this.connecting;
     this.connecting = (async () => {
-      const client = new Client({ name: 'larp-campus', version: '0.4.0' });
+      const client = new Client({ name: 'larp', version: '0.6.2' });
       const transport = new StreamableHTTPClientTransport(new URL(this.url), {
         requestInit: { headers: { Authorization: `Bearer ${this.apiKey}` } },
       });
@@ -62,6 +64,7 @@ export class Meko {
       id: crypto.randomUUID(), at: new Date().toISOString(), tool, kind: KIND[tool] || 'other',
       agent: meta.agent || null, agentId: meta.agentId || null, to: meta.to || null, toId: meta.toId || null,
       datapack: meta.datapack ? this.name(meta.datapack) : null, spaceId: meta.spaceId || null, taskId: meta.taskId || null,
+      space: Boolean(meta.space),
       summary: String(meta.summary || '').slice(0, 240), ok: true, ms: 0, skipped: false, error: null, resultCount: null, saved: null, quality: null,
     };
     if (!this.enabled) {
@@ -75,7 +78,15 @@ export class Meko {
       args = { ...args };
       if (args.metadata && typeof args.metadata !== 'string') args.metadata = JSON.stringify(args.metadata);
       if (NEEDS_CONVERSATION.has(tool) && !args.conversation_id) args.conversation_id = await this.conversation(args.datapack_id, args.agent_id || meta.agent);
-      const response = await client.callTool({ name: tool, arguments: args });
+      let response;
+      try {
+        response = await client.callTool({ name: tool, arguments: args });
+      } catch (error) {
+        // A dropped connection (flaky Wi-Fi) is retried once on a fresh connection; Meko's own errors aren't.
+        if (!/fetch failed|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket|network|terminated/i.test(error.message)) throw error;
+        await this.close();
+        response = await (await this.connect()).callTool({ name: tool, arguments: args });
+      }
       const result = parse(response);
       if (response.isError || result?.error) throw new Error(typeof result?.error === 'string' ? result.error : JSON.stringify(result?.error || result).slice(0, 300));
       entry.ms = Math.round(performance.now() - started);
@@ -123,30 +134,45 @@ export class Meko {
 
   /** Find a datapack by exact name, creating it if it doesn't exist yet. Returns its id. */
   async datapack(short, agent = 'setup') {
-    let id = await this.find(short, agent);
-    const name = this.name(short);
-    if (!id) {
-      const created = await this.call('datapack_create', { name }, { agent, summary: `create ${name}` });
-      id = pickId(created?.datapack || created);
+    if (this.datapacks.has(short)) return this.datapacks.get(short);
+    // Several calls for one new datapack can arrive at once (a space's recalls run in parallel): share
+    // one find-or-create, and if another writer created it first, read it back instead of failing.
+    this.creating ||= new Map();
+    if (!this.creating.has(short)) {
+      this.creating.set(short, (async () => {
+        let id = await this.find(short, agent);
+        const name = this.name(short);
+        if (!id) {
+          try {
+            const created = await this.call('datapack_create', { name }, { agent, summary: `create ${name}` });
+            id = pickId(created?.datapack || created);
+          } catch (error) {
+            if (!/already|taken|exists/i.test(error.message)) throw error;
+            this.datapacks.delete(short);
+            id = await this.find(short, agent);
+          }
+        }
+        if (!id) throw new Error(`Meko didn't return an id for datapack ${name}`);
+        this.datapacks.set(short, id);
+        return id;
+      })().finally(() => this.creating.delete(short)));
     }
-    if (!id) throw new Error(`Meko didn't return an id for datapack ${name}`);
-    this.datapacks.set(short, id);
-    return id;
+    return this.creating.get(short);
   }
 
   // ---------- what agents do with their memory ----------
 
   /** An agent remembers something in its own datapack (or, with `to`, leaves a note in another agent's). */
-  async remember({ agent, datapack, text, metadata, meta = {} }) {
+  async remember({ agent, key, datapack, text, metadata, meta = {} }) {
     const id = await this.datapack(datapack, agent);
-    const result = await this.call('memory_add', { datapack_id: id, agent_id: agent, text, metadata }, { agent, datapack, summary: text, ...meta });
+    const result = await this.call('memory_add', { datapack_id: id, agent_id: key || agent, text, metadata }, { agent, datapack, summary: text, ...meta });
     return { result, id: memoryId(result) };
   }
 
   /** Recall before reasoning: what does this datapack know that's relevant? */
-  async recall({ agent, datapack, query, limit = 5, meta = {} }) {
+  async recall({ agent, key, datapack, query, limit = 5, meta = {} }) {
     const id = await this.datapack(datapack, agent);
-    const result = await this.call('memory_search', { datapack_id: id, query, limit }, { agent, datapack, summary: query, ...meta });
+    const result = await this.call('memory_search', { datapack_id: id, query, limit, ...(key ? { agent_id: key } : {}) }, { agent, datapack, summary: query, ...meta });
     return (result?.results || result?.memories || []).map((r) => ({ id: r.id || r.memory_id, text: r.memory || r.text || r.content || '', score: r.score ?? null, promoted: Boolean(r.promoted), metadata: r.metadata || null }));
   }
 
@@ -154,20 +180,20 @@ export class Meko {
    * Recall through context_search: memory (and, with source 'auto', the knowledge base) in one call,
    * plus what Meko says the recall saved, its match quality, and who wrote each memory.
    */
-  async search({ agent, datapack, query, limit = 5, source = 'memory', meta = {} }) {
+  async search({ agent, key, datapack, query, limit = 5, source = 'memory', meta = {} }) {
     const id = await this.datapack(datapack, agent);
-    const r = await this.call('context_search', { datapack_id: id, agent_id: agent, query, limit, force_source: source }, { agent, datapack, summary: query, ...meta });
+    const r = await this.call('context_search', { datapack_id: id, agent_id: key || agent, query, limit, force_source: source }, { agent, datapack, summary: query, ...meta });
     const mem = (r?.results?.memory || []).map((m) => ({ id: m.id, text: m.memory || m.text || '', score: m.score ?? null, metadata: m.metadata || null, writer: m.agent_id || null, origin: 'memory' }));
     const kb = (r?.results?.knowledge_base || []).map((k) => ({ id: k.id, text: k.chunk_text || '', score: k.rerank_score ?? null, metadata: null, writer: null, origin: 'document' }));
     return { items: [...mem, ...kb], saved: Number(r?.token_savings?.tokens_saved) || 0, quality: r?.match_quality || null, hint: r?.agent_hint || null };
   }
 
   /** Every memory in a datapack, page by page (for the nightly review). */
-  async listAll({ agent, datapack, meta = {} }) {
+  async listAll({ agent, key, datapack, meta = {} }) {
     const id = await this.datapack(datapack, agent);
     const out = [];
     for (let page = 1; page <= 20; page++) {
-      const r = await this.call('memory_get_all', { datapack_id: id, agent_id: agent, page, page_size: 100 }, { agent, datapack, summary: `review page ${page}`, ...meta });
+      const r = await this.call('memory_get_all', { datapack_id: id, agent_id: key || agent, page, page_size: 100 }, { agent, datapack, summary: `review page ${page}`, ...meta });
       for (const m of r?.memories || []) out.push({ id: m.id, text: m.data || m.memory || '', at: m.created_at || null, conversation: m.conversation_id || null, writer: m.agent_id || null });
       if (!r || page >= (r.total_pages || 1)) break;
     }
@@ -178,9 +204,9 @@ export class Meko {
    * Store a file as a Meko artifact. Meko keys artifacts by content: the same bytes return the artifact
    * stored first, with its original filename, so duplicate: true means someone already produced this.
    */
-  async artifact({ agent, datapack, filename, text, contentType = 'text/plain', meta = {} }) {
+  async artifact({ agent, key, datapack, filename, text, contentType = 'text/plain', meta = {} }) {
     const id = await this.datapack(datapack, agent);
-    const r = await this.call('artifact_put', { datapack_id: id, agent_id: agent, filename, content_base64: Buffer.from(text, 'utf8').toString('base64'), content_type: contentType }, { agent, datapack, summary: filename, ...meta });
+    const r = await this.call('artifact_put', { datapack_id: id, agent_id: key || agent, filename, content_base64: Buffer.from(text, 'utf8').toString('base64'), content_type: contentType }, { agent, datapack, summary: filename, ...meta });
     return { artifactId: r?.artifact_id || null, hash: r?.content_hash || null, filename: r?.filename || filename, size: r?.size_bytes ?? null, duplicate: Boolean(r?.filename && r.filename !== filename) };
   }
 
@@ -195,9 +221,9 @@ export class Meko {
   }
 
   /** Save an exchange; Meko extracts durable facts from it in the background. */
-  async converse({ agent, datapack, conversationId, input, output, metadata, meta = {} }) {
+  async converse({ agent, key, datapack, conversationId, input, output, metadata, meta = {} }) {
     const id = await this.datapack(datapack, agent);
-    const args = { datapack_id: id, agent_id: agent, input, output, metadata, conversation_id: conversationId || await this.conversation(id, agent) };
+    const args = { datapack_id: id, agent_id: key || agent, input, output, metadata, conversation_id: conversationId || await this.conversation(id, key || agent) };
     return this.call('conversation_add_message', args, { agent, datapack, summary: input, ...meta });
   }
 
@@ -208,19 +234,19 @@ export class Meko {
   }
 
   /** One-way: move memories into the datapack's shared knowledge. Only after a person approves. */
-  async promote({ agent, datapack, memoryIds, meta = {} }) {
+  async promote({ agent, key, datapack, memoryIds, meta = {} }) {
     const id = await this.datapack(datapack, agent);
-    return this.call('memory_promote', { datapack_id: id, agent_id: agent, memory_ids: memoryIds }, { agent, datapack, summary: `${memoryIds.length} memory to shared knowledge`, ...meta });
+    return this.call('memory_promote', { datapack_id: id, agent_id: key || agent, memory_ids: memoryIds }, { agent, datapack, summary: `${memoryIds.length} memory to shared knowledge`, ...meta });
   }
 
-  async correct({ agent, datapack, memoryId, text, meta = {} }) {
+  async correct({ agent, key, datapack, memoryId, text, meta = {} }) {
     const id = await this.datapack(datapack, agent);
-    return this.call('memory_update', { datapack_id: id, agent_id: agent, memory_id: memoryId, text }, { agent, datapack, summary: text, ...meta });
+    return this.call('memory_update', { datapack_id: id, agent_id: key || agent, memory_id: memoryId, text }, { agent, datapack, summary: text, ...meta });
   }
 
-  async forget({ agent, datapack, memoryId, meta = {} }) {
+  async forget({ agent, key, datapack, memoryId, meta = {} }) {
     const id = await this.datapack(datapack, agent);
-    return this.call('memory_delete_by_id', { datapack_id: id, agent_id: agent, memory_id: memoryId }, { agent, datapack, summary: `forgot ${memoryId}`, ...meta });
+    return this.call('memory_delete_by_id', { datapack_id: id, agent_id: key || agent, memory_id: memoryId }, { agent, datapack, summary: `forgot ${memoryId}`, ...meta });
   }
 
   async listTools() {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, ArrowLeft, CalendarClock, CarFront, Check, ExternalLink, HeartPulse, Link2, Pill, ShieldPlus, Unplug, Wallet, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, BookOpen, CalendarClock, CarFront, Check, ExternalLink, HeartPulse, Palette, Pill, ShieldPlus, Wallet, X } from 'lucide-react';
 import type { Ctx } from '../route';
 import type { ConnectedApp } from '../types';
 import { Card, EmptyState, ErrorText, PageHeader, Stat, Tag, timeAgo, useAction } from '../ui';
@@ -23,6 +23,14 @@ const call = (id: string, method: string, path: string, body?: unknown) => windo
 
 // ---------- the list of apps ----------
 
+/** Apps built into Larp as web pages (they keep their data in this desktop app's storage). */
+export const WEB_APPS: { id: 'citylines' | 'eduspace' | 'studio'; name: string; kind: string; line: string; subtitle: string; icon: React.ReactElement; accent: string; src: string }[] = [
+  { id: 'citylines', name: 'Citylines', kind: 'Family transport', line: 'Plan family trips, keep cab details handy and track vehicle care.', subtitle: 'Family journeys and vehicle care, together in one place.', icon: <CarFront size={18} />, accent: '#7886eb', src: './citylines/index.html' },
+  { id: 'eduspace', name: 'EduSpace', kind: 'Learning workspace', line: 'Courses, assignments, study sessions and a notebook for your next idea.', subtitle: 'A little progress, every day. Your local learning workspace.', icon: <BookOpen size={18} />, accent: '#5fbf9a', src: './eduspace/index.html' },
+  { id: 'studio', name: 'Studio', kind: 'Creative review room', line: 'Put concepts on the wall, compare directions and record feedback and decisions.', subtitle: 'Good work. Better together. A creative review workspace.', icon: <Palette size={18} />, accent: '#b8bfa4', src: './studio/index.html' },
+];
+export const APP_NAMES: Record<string, string> = { swasthya: 'Swasthya', kosh: 'Kosh', ...Object.fromEntries(WEB_APPS.map((a) => [a.id, a.name])) };
+
 export function AppsPage({ ctx }: { ctx: Ctx }) {
   const [apps, setApps] = useState<ConnectedApp[] | null>(null);
   const action = useAction();
@@ -31,13 +39,8 @@ export function AppsPage({ ctx }: { ctx: Ctx }) {
 
   return (
     <div className="page">
-      <PageHeader title="Apps" subtitle="Family apps running on this computer, built into Larp. Their data stays here; Larp's agents still ask before sharing anything." />
+      <PageHeader title="Apps" subtitle="Five apps built into Larp, each opening its full interface here. Their data stays on this computer; agents that may read Swasthya and Kosh say so when you approve them." />
       <div className="apps-grid">
-        <section className="app-tile connected" style={{ ['--app' as string]: '#7886eb' }}>
-          <div className="app-tile-head"><span className="app-tile-icon"><CarFront size={18} /></span><div className="grow"><h2>Citylines</h2><p>Family transport</p></div><span className="presence-text good">● ready</span></div>
-          <p className="app-tile-line">Plan family trips, keep cab details handy and track vehicle care.</p>
-          <div className="app-tile-foot"><button className="btn btn-primary" onClick={() => ctx.go({ page: 'app', id: 'citylines' })}>Open in Larp</button><span className="faint small">Built in · stored on this device</span></div>
-        </section>
         {(apps || []).map((a) => {
           const about = ABOUT[a.id];
           return (
@@ -45,26 +48,33 @@ export function AppsPage({ ctx }: { ctx: Ctx }) {
               <div className="app-tile-head">
                 <span className="app-tile-icon">{about.icon}</span>
                 <div className="grow"><h2>{a.name} <span className="app-script">{about.script}</span></h2><p>{a.kind}</p></div>
-                <span className={'presence-text ' + (a.running ? 'good' : 'faint')}>{a.running ? '● running' : '○ not running'}</span>
+                <span className={'presence-text ' + (a.running ? 'good' : 'faint')}>{a.running ? '● running' : '○ starting'}</span>
               </div>
               <p className="app-tile-line">{about.line}</p>
               <div className="app-tile-foot">
-                {a.connected ? (
-                  <>
-                    <button className="btn btn-primary" onClick={() => ctx.go({ page: 'app', id: a.id })}>Open in Larp</button>
-                    <span className="faint small">Connected {a.connectedAt ? timeAgo(a.connectedAt) : ''} · {a.url?.replace('http://', '')}</span>
-                  </>
-                ) : a.running ? (
-                  <button className="btn btn-primary" disabled={action.busy} onClick={() => action.run(async () => { setApps(await window.larp!.appsConnect!({ id: a.id })); toast(`${a.name} connected`); })}><Link2 size={14} /> Connect</button>
-                ) : (
-                  <span className="faint small">Start it on this computer (<code className="mono">npm --prefix {a.name} run dev</code>), then connect.</span>
-                )}
+                <button className="btn btn-primary" disabled={action.busy || (!a.connected && !a.running)} title={!a.connected && !a.running ? `${a.name} is starting` : undefined}
+                  onClick={() => action.run(async () => {
+                    if (!a.connected) { setApps(await window.larp!.appsConnect!({ id: a.id })); toast(`${a.name} connected`); }
+                    ctx.go({ page: 'app', id: a.id });
+                  })}>Open in Larp</button>
+                <span className="faint small">
+                  {a.connected ? <>Built in · agents can read it{a.url ? ` · ${a.url.replace('http://', '')}` : ''}</>
+                    : a.running ? 'Running · connects when you open it'
+                    : 'Starting inside Larp…'}
+                </span>
               </div>
             </section>
           );
         })}
+        {WEB_APPS.map((w) => (
+          <section key={w.id} className="app-tile connected" style={{ ['--app' as string]: w.accent }}>
+            <div className="app-tile-head"><span className="app-tile-icon">{w.icon}</span><div className="grow"><h2>{w.name}</h2><p>{w.kind}</p></div><span className="presence-text good">● ready</span></div>
+            <p className="app-tile-line">{w.line}</p>
+            <div className="app-tile-foot"><button className="btn btn-primary" onClick={() => ctx.go({ page: 'app', id: w.id })}>Open in Larp</button><span className="faint small">Built in · stored on this device</span></div>
+          </section>
+        ))}
       </div>
-      {!window.larp?.appsList && <p className="faint small">Swasthya and Kosh connect through the Larp desktop app.</p>}
+      {!window.larp?.appsList && <p className="faint small">Swasthya and Kosh run inside the Larp desktop app.</p>}
       <ErrorText error={action.error} />
     </div>
   );
@@ -72,27 +82,27 @@ export function AppsPage({ ctx }: { ctx: Ctx }) {
 
 // ---------- one app, inside Larp ----------
 
-export function AppView({ ctx, id, tab = 'overview' }: { ctx: Ctx; id: 'swasthya' | 'kosh' | 'citylines'; tab?: 'overview' | 'full' }) {
+/** Every app opens its full interface. Swasthya and Kosh also have a quick panel wired to Larp (doses, bills, care checklists). */
+export function AppView({ ctx, id, tab = 'full' }: { ctx: Ctx; id: 'swasthya' | 'kosh' | 'citylines' | 'eduspace' | 'studio'; tab?: 'overview' | 'full' }) {
   const [app, setApp] = useState<ConnectedApp | null>(null);
   useEffect(() => { window.larp?.appsList?.().then((l) => setApp(l.find((x) => x.id === id) || null)); }, [id]);
+  const web = WEB_APPS.find((w) => w.id === id);
+  const back = <button className="btn btn-ghost btn-sm back" onClick={() => ctx.go({ page: 'apps' })}><ArrowLeft size={14} /> Apps</button>;
+  if (web) return <div className="page app-view" style={{ ['--app' as string]: web.accent }}>{back}<PageHeader title={web.name} subtitle={web.subtitle} /><iframe className="app-frame" src={web.src} title={web.name} /></div>;
   const about = ABOUT[id];
-  if (id === 'citylines') return <div className="page app-view"><button className="btn btn-ghost btn-sm back" onClick={() => ctx.go({ page: 'apps' })}><ArrowLeft size={14} /> Apps</button><PageHeader title="Citylines" subtitle="Family journeys and vehicle care, together in one place." /><iframe className="app-frame" src="./citylines/index.html" title="Citylines family transport planner" /></div>;
   if (!window.larp?.appsCall) return <AppsPage ctx={ctx} />;
-  if (app && !app.connected) return <div className="page"><EmptyState title={`${app.name} isn't connected`} action={<button className="btn btn-primary" onClick={() => ctx.go({ page: 'apps' })}>Go to Apps</button>} /></div>;
+  if (app && !app.connected) return <div className="page"><EmptyState title={`${app.name} is starting`} action={<button className="btn btn-primary" onClick={() => ctx.go({ page: 'apps' })}>Go to Apps</button>} /></div>;
   return (
     <div className="page app-view" style={{ ['--app' as string]: about.accent }}>
-      <button className="btn btn-ghost btn-sm back" onClick={() => ctx.go({ page: 'apps' })}><ArrowLeft size={14} /> Apps</button>
-      <PageHeader title={<>{app?.name || ''} <span className="app-script">{about.script}</span></>} subtitle={about.line}
-        actions={app && <>
-          <button className="btn btn-ghost btn-sm" onClick={() => window.larp!.openExternal({ url: app.url! })}><ExternalLink size={14} /> Browser</button>
-          <button className="btn btn-ghost btn-sm" onClick={async () => { await window.larp!.appsDisconnect!({ id }); ctx.go({ page: 'apps' }); }}><Unplug size={14} /> Disconnect</button>
-        </>}>
+      {back}
+      <PageHeader title={<>{app?.name || APP_NAMES[id]} <span className="app-script">{about.script}</span></>} subtitle={about.line}
+        actions={app && <button className="btn btn-ghost btn-sm" onClick={() => window.larp!.openExternal({ url: app.url! })}><ExternalLink size={14} /> Browser</button>}>
         <div className="segmented">
-          <button aria-pressed={tab === 'overview'} onClick={() => ctx.go({ page: 'app', id, tab: 'overview' })}>In Larp</button>
           <button aria-pressed={tab === 'full'} onClick={() => ctx.go({ page: 'app', id, tab: 'full' })}>Full app</button>
+          <button aria-pressed={tab === 'overview'} onClick={() => ctx.go({ page: 'app', id, tab: 'overview' })}>Quick panel</button>
         </div>
       </PageHeader>
-      {tab === 'full' ? (app?.url ? <iframe className="app-frame" src={`${app.url}/app`} title={`${app.name}`} /> : null) : id === 'swasthya' ? <SwasthyaPanel ctx={ctx} /> : <KoshPanel />}
+      {tab === 'full' ? (app?.url ? <iframe className="app-frame" src={`${app.url}/app`} title={app.name} /> : null) : id === 'swasthya' ? <SwasthyaPanel ctx={ctx} /> : <KoshPanel />}
     </div>
   );
 }

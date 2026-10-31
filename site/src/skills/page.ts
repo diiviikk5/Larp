@@ -75,3 +75,4 @@ function open(slug: string) {
   copy.addEventListener('click', async () => { await navigator.clipboard.writeText(s.install); copy.textContent = 'Copied'; setTimeout(() => (copy.textContent = 'Copy'), 1600); });
 }
 sheet.addEventListener('click', (e) => { if (e.target === sheet) sheet.close(); });
+

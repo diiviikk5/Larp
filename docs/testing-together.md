@@ -37,9 +37,7 @@ Your Meko account allows 10 datapacks.
 | `larp` | You (project) | Decisions, docs, build proofs and field-test notes for building Larp. Larp itself never touches it. |
 | `divik-larp-skills` | You (project) | The skills catalog (docs/skills-catalog.md). Agents search it before every task. |
 | `divik-larp-apps` | You (project) | The Swasthya and Kosh API contract (docs/apps-api.md). Agents search it before every task. |
-| `divik-larp-agent-<name>-xxxx` | Larp, one per agent | That agent's memory and hand-off notes |
-| `divik-larp-space-<name>-xxxx` | Larp, one per space | Lessons a person approved |
-| `divik-larp-proofs` | Larp | Proof of every result (its diff) |
+| `divik-larp-team` | Larp | Every agent's memory and every space's lessons (each under its own `agent_id`), and result proofs |
 
 With `meko_default_datapack` and `adlc-code-review-Oct31` already on the account, that leaves room for one space, the proofs pack and two agents. Add a third agent only after removing a datapack you don't need.
 
