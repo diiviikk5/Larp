@@ -205,7 +205,7 @@ function crumbsFor(route: Route, state: State, space: Space): { label: string; r
     case 'agent': return [base, { label: 'Agents', route: { page: 'agents' } }, { label: state.agents.find((a) => a.id === route.id)?.name || 'Agent' }];
     case 'agent-new': return [base, { label: 'Agents', route: { page: 'agents' } }, { label: 'Add agent' }];
     case 'plans': return [base, { label: 'Plans', route: { page: 'plans' } }, ...(route.id ? [{ label: state.plans.find((p) => p.id === route.id)?.title || 'Plan' }] : [])];
-    case 'app': return [base, { label: 'Apps', route: { page: 'apps' } }, { label: route.id === 'kosh' ? 'Kosh' : route.id === 'citylines' ? 'Citylines' : 'Swasthya' }];
+    case 'app': return [base, { label: 'Apps', route: { page: 'apps' } }, { label: route.id === 'kosh' ? 'Kosh' : route.id === 'citylines' ? 'Citylines' : route.id === 'studio' ? 'Studio' : 'Swasthya' }];
     case 'care': return [base, { label: 'Care', route: { page: 'care' } }, ...(route.id ? [{ label: state.checklists.find((c) => c.id === route.id)?.title || 'Checklist' }] : [])];
     default: return [base, { label: route.page[0].toUpperCase() + route.page.slice(1) }];
   }
