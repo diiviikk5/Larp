@@ -21,6 +21,28 @@ export const APPS: App[] = [
     url: 'http://localhost:5200', run: 'npm --prefix Kosh run dev', shot: './apps/kosh.jpg', inside: './apps/kosh-app.jpg', accent: '#7a3cff',
     features: ['Money requests', 'Bills', 'Goals', 'Budgets', 'Family feed'], endpoints: 7,
   },
+  // Built into the desktop app (Apps page). The website hosts a demo copy of each, so they play live here.
+  {
+    id: 'citylines', name: 'Citylines', kind: 'Family transport',
+    tagline: 'Getting there, together.',
+    description: 'Pickups and trips, a ticket wallet, cab and driver details, vehicle care reminders and transport spending for the whole family, in one calm place.',
+    url: '/demo/citylines', run: 'Built into Larp: open Apps, then Citylines', shot: './apps/citylines.jpg', inside: './apps/citylines-app.jpg', accent: '#7886eb',
+    features: ['Trips', 'Tickets', 'Vehicles', 'Care reminders', 'Spending'], endpoints: 3, source: 'https://github.com/diiviikk5/Larp/pull/1',
+  },
+  {
+    id: 'eduspace', name: 'EduSpace', kind: 'Learning workspace',
+    tagline: 'A little progress, every day.',
+    description: 'Courses and chapters, assignments, a study schedule, focus sessions, notes and a study circle. Agents can see what is due and help plan the week.',
+    url: '/demo/eduspace', run: 'Built into Larp: open Apps, then EduSpace', shot: './apps/eduspace.jpg', inside: './apps/eduspace-app.jpg', accent: '#5fbf9a',
+    features: ['Courses', 'Assignments', 'Schedule', 'Focus', 'Notes'], endpoints: 3,
+  },
+  {
+    id: 'studio', name: 'Studio', kind: 'Creative review room',
+    tagline: 'Good work. Better together.',
+    description: 'Put concepts on the wall, compare directions, collect feedback and record the decisions, so a team and its agents review creative work in one place.',
+    url: '/demo/studio', run: 'Built into Larp: open Apps, then Studio', shot: './apps/studio.jpg', inside: './apps/studio-app.jpg', accent: '#b8bfa4',
+    features: ['Projects', 'Directions', 'Feedback', 'Decisions'], endpoints: 3,
+  },
 ];
 
 export const BUILT_IN = [

@@ -35,24 +35,38 @@ export async function git(cwd, args, options = {}) {
 }
 
 /** Spawn a long-running process that emits one JSON object per line. */
-export function jsonLines(command, args, { cwd, input, shell = false, env, signal, onJson, onText }) {
+export function jsonLines(command, args, { cwd, input, shell = false, env, signal, onJson, onText, isComplete, completionGraceMs = 1500 }) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { cwd, shell, env: env || process.env, windowsHide: true });
     let stderr = '';
+    let completionTimer;
+    let completed = false;
+    const stop = () => {
+      if (process.platform === 'win32' && child.pid) {
+        const killer = spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
+        killer.on('error', () => child.kill());
+      } else child.kill();
+    };
     child.stderr.on('data', (chunk) => { stderr = (stderr + chunk.toString('utf8')).slice(-8000); });
     readline.createInterface({ input: child.stdout }).on('line', (line) => {
       const trimmed = line.trim();
       if (!trimmed) return;
       let parsed;
       try { parsed = JSON.parse(trimmed); } catch { onText?.(trimmed); return; }
+      if (isComplete?.(parsed) && !completed) {
+        completed = true;
+        // A completed turn can leave CLI hooks/children holding stdout open.
+        completionTimer = setTimeout(() => { stop(); child.stdout.destroy(); child.stderr.destroy(); }, completionGraceMs);
+      }
       try { onJson(parsed); } catch (error) { console.error('[larp] adapter event error:', error); }
     });
-    const abort = () => child.kill();
+    const abort = stop;
     signal?.addEventListener('abort', abort, { once: true });
-    child.on('error', reject);
+    child.on('error', (error) => { clearTimeout(completionTimer); signal?.removeEventListener('abort', abort); reject(error); });
     child.on('close', (exitCode) => {
       signal?.removeEventListener('abort', abort);
-      resolve({ exitCode, stderr });
+      clearTimeout(completionTimer);
+      resolve({ exitCode: completed ? 0 : exitCode, stderr });
     });
     if (input !== undefined) child.stdin.end(input);
   });

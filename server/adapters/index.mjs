@@ -9,11 +9,12 @@ import path from 'node:path';
 import { jsonLines } from './process.mjs';
 import { runOpenAICompatible } from './openai.mjs';
 import { runHermes } from './hermes.mjs';
+import runtimePaths from '../runtime-paths.cjs';
 
 const MODEL = /^[\w.:\-/]{1,80}$/;
 
 /** The Codex CLI to run: LARP_CODEX (a full path, for a copy installed elsewhere) or `codex` on the PATH. */
-export const codexCommand = () => process.env.LARP_CODEX || 'codex';
+export const codexCommand = runtimePaths.codexCommand;
 
 /** The environment for a child agent CLI, minus markers that make it think it is nested in another session. */
 function cleanEnv() {
@@ -154,6 +155,7 @@ async function runCodexOnce({ prompt, cwd, config, onLog, signal }, overrides) {
     cwd, input: prompt, signal, env: config.codexHome ? { ...cleanEnv(), CODEX_HOME: config.codexHome } : cleanEnv(),
     // codex is an npm .cmd shim on Windows, which needs a shell. Arguments are fixed or validated above.
     shell: process.platform === 'win32',
+    isComplete: (msg) => msg.type === 'turn.completed' || msg.type === 'turn.failed',
     onJson: (msg) => {
       const item = msg.item;
       if (msg.type === 'error' || msg.type === 'turn.failed') failed = msg.message || msg.error?.message || 'Codex reported an error';

@@ -5,7 +5,7 @@ export type Host = { id: string; name: string; ownerId: string; online: boolean;
 export type Agent = {
   id: string; name: string; ownerId: string; hostId: string; runtime: string; model: string | null;
   spaceIds: string[]; repo: string | null; pal: string; online: boolean; busy: boolean;
-  repoId?: string | null; usesApps?: boolean;
+  repoId?: string | null; usesApps?: boolean; skills?: string[];
 };
 
 export type LogLine = { at: string; kind: string; text: string };
@@ -94,7 +94,7 @@ export type State = {
 };
 
 export type LocalAgent = {
-  runtime: string; model: string | null; repoPath: string | null; baseUrl: string | null; apiKeyEnv: string | null; codexHome?: string | null; useApps?: boolean;
+  skills?: string[]; runtime: string; model: string | null; repoPath: string | null; baseUrl: string | null; apiKeyEnv: string | null; codexHome?: string | null; useApps?: boolean;
   private: { calendar: { day: string; title: string; from: string; to: string }[]; availability: Record<string, { from: string; to: string }[]>; budget: number | null };
   sharing: Record<string, 'auto' | 'ask' | 'never'>;
 };
@@ -114,6 +114,8 @@ export type RuntimeStatus = { installed: boolean; detail: string; note?: string 
 declare global {
   interface Window {
     larp?: {
+      workspace(args: Record<string, unknown>): Promise<any>;
+      appSnapshot(args: Record<string, unknown>): Promise<any>;
       config(): Promise<DeviceConfig>;
       createSpace(args: { spaceName: string; kind: string; name: string; lan: boolean }): Promise<DeviceConfig>;
       joinSpace(args: { url: string; code: string; name: string }): Promise<DeviceConfig>;

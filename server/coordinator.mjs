@@ -19,6 +19,7 @@ const PALS = ['moss', 'bitbug', 'pip', 'boing'];
 const OPEN_TASK = ['awaiting_approval', 'queued', 'running', 'waiting', 'needs_review', 'revision_requested', 'accepted', 'applying'];
 const MAX_ASKS = 3; // per task, so two agents can't keep asking each other forever
 const MAX_BODY = 2_000_000;
+const LOG_IN_VIEW = 120; // log lines per task sent to the window (the full log stays on the coordinator)
 
 class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -252,11 +253,16 @@ export class Coordinator {
   }
 
   /** A host registers an agent for a person. The person's own token proves consent. */
-  registerAgent(host, { ownerToken, name, runtime, model, spaceIds, repo, repoId, usesApps }) {
-    const owner = this.auth(ownerToken);
+  registerAgent(host, { ownerToken, name, runtime, model, spaceIds, repo, repoId, usesApps, skills = [] }, trustedOwnerId = null) {
+    const owner = trustedOwnerId ? { personId: trustedOwnerId } : this.auth(ownerToken);
     if (!owner.personId) fail(403, 'The agent owner must sign in');
     const ids = Array.isArray(spaceIds) ? spaceIds : [];
     for (const spaceId of ids) this.memberSpace(owner.personId, spaceId);
+    for (const spaceId of ids) {
+      const peers = Object.values(this.s.agents).filter((a) => a.spaceIds.includes(spaceId));
+      if (peers.some((a) => a.name.toLowerCase() === String(name || '').trim().toLowerCase())) fail(409, 'An agent with this name already exists in the space');
+      if (peers.filter((a) => a.ownerId === owner.personId).length >= 8) fail(409, 'Maximum 8 agents per owner per space');
+    }
     const count = Object.keys(this.s.agents).length;
     const agent = {
       id: newId('agt'),
@@ -268,7 +274,7 @@ export class Coordinator {
       spaceIds: ids,
       repo: repo ? String(repo).slice(0, 80) : null,
       repoId: repoId ? String(repoId).slice(0, 64) : null,
-      usesApps: Boolean(usesApps),
+      usesApps: Boolean(usesApps), skills: Array.isArray(skills) ? [...new Set(skills.map(String))].slice(0, 8) : [],
       pal: PALS[count % PALS.length],
       createdAt: now(),
     };
@@ -288,6 +294,7 @@ export class Coordinator {
       agent.spaceIds = patch.spaceIds;
     }
     for (const key of ['runtime', 'model', 'repo', 'repoId']) if (key in patch) agent[key] = patch[key] ? String(patch[key]).slice(0, 80) : null;
+    if ('skills' in patch) agent.skills = Array.isArray(patch.skills) ? [...new Set(patch.skills.map(String))].slice(0, 8) : [];
     if ('usesApps' in patch) agent.usesApps = Boolean(patch.usesApps);
     this.changed();
     return agent;
@@ -311,7 +318,7 @@ export class Coordinator {
 
   // ---------- tasks ----------
 
-  createTask(personId, { spaceId, agentId, title, instructions, check, kind }) {
+  createTask(personId, { spaceId, agentId, title, instructions, check, kind, parentId, askedBy }) {
     const space = this.memberSpace(personId, spaceId);
     const agent = this.s.agents[agentId];
     if (!agent || !agent.spaceIds.includes(space.id)) fail(400, 'Choose an agent in this space');
@@ -330,6 +337,7 @@ export class Coordinator {
       status: 'awaiting_approval',
       attempts: [],
       feedback: [],
+      parentId, askedBy, messages: [],
       files: [],
       conflicts: [],
       log: [],
@@ -375,6 +383,29 @@ export class Coordinator {
     if (eventText) this.store.record({ type: `task.${status}`, spaceId: task.spaceId, actor, taskId: task.id, text: eventText });
     this.telegram.taskChanged(task, status);
     this.changed();
+  }
+
+  messageTask(personId, taskId, { text: message }) {
+    const task = this.task(personId, taskId);
+    if (![task.ownerId, task.createdBy].includes(personId)) fail(403, 'Only the owner or requester can steer this task');
+    if (['accepted', 'applied', 'applying', 'cancelled', 'denied'].includes(task.status)) fail(409, 'Start a new task after acceptance or cancellation');
+    const value = text(message, 'Message', 4000);
+    (task.messages ||= []).push({ by: personId, text: value, at: now() });
+    task.feedback.push({ by: personId, text: value, at: now() });
+    if (['needs_review', 'failed', 'interrupted'].includes(task.status)) this.setTaskStatus(task, 'queued', personId, 'continued the conversation');
+    this.store.record({ type: 'task.message', spaceId: task.spaceId, actor: personId, taskId, text: value });
+    this.changed(); return task;
+  }
+
+  spawnForTask(host, taskId, { name, skills }) {
+    const task = this.hostTask(host, taskId);
+    if (task.status !== 'running' || task.parentId) fail(409, 'Only a running lead task can spawn agents');
+    const parent = this.s.agents[task.agentId];
+    const agents = Object.values(this.s.agents).filter((a) => a.ownerId === parent.ownerId && a.spaceIds.includes(task.spaceId));
+    if (agents.length >= 8) fail(409, 'Agent limit reached (8 per owner per space)');
+    if (!/^[A-Za-z][A-Za-z0-9_-]{0,30}$/.test(name || '')) fail(400, 'Use a simple agent name');
+    if (Object.values(this.s.agents).some((a) => a.spaceIds.includes(task.spaceId) && a.name.toLowerCase() === name.toLowerCase())) fail(409, 'Agent name already exists');
+    return this.registerAgent(host, { ...parent, name, spaceIds: [task.spaceId], skills: (skills || parent.skills || []).filter((s) => (parent.skills || []).includes(s)) }, parent.ownerId);
   }
 
   reviseTask(personId, taskId, { feedback }) {
@@ -435,6 +466,7 @@ export class Coordinator {
       if (approval.taskId === task.id && approval.status === 'pending') approval.status = 'cancelled';
     }
     this.setTaskStatus(task, 'cancelled', personId, 'cancelled the task');
+    for (const child of Object.values(this.s.tasks)) if (child.parentId === task.id && ['queued', 'running', 'waiting', 'awaiting_approval'].includes(child.status)) this.cancelTask(child.createdBy, child.id);
     return task;
   }
 
@@ -495,7 +527,7 @@ export class Coordinator {
   peersOf(task) {
     if ((task.asks || []).length >= MAX_ASKS || task.parentId) return [];
     return Object.values(this.s.agents).filter((a) => a.id !== task.agentId && a.spaceIds.includes(task.spaceId))
-      .map((a) => ({ name: a.name, owner: this.s.people[a.ownerId]?.name || 'someone', online: Boolean(this.s.hosts[a.hostId]?.online), apps: Boolean(a.usesApps) }));
+      .map((a) => ({ name: a.name, owner: this.s.people[a.ownerId]?.name || 'someone', online: Boolean(this.s.hosts[a.hostId]?.online), apps: Boolean(a.usesApps), skills: a.skills || [] }));
   }
 
   // ---------- agents asking agents ----------
@@ -513,7 +545,7 @@ export class Coordinator {
     task.asks ||= [];
     if (task.asks.length >= MAX_ASKS || task.asks.some((a) => a.text === request)) return false;
     const child = this.createTask(task.ownerId, {
-      spaceId: task.spaceId, agentId: target.id, kind: task.kind,
+      spaceId: task.spaceId, agentId: target.id, kind: task.kind, parentId: task.id, askedBy: asker.id,
       title: clipText(`${asker.name} asks: ${request.split('\n')[0]}`, 120),
       instructions: [`${asker.name} (${this.s.people[asker.ownerId]?.name}'s agent) is working on "${task.title}" and asks you:`, '', request, '',
         'Do what is asked, then reply with a short, clear answer. Your answer and any changes you make go back to them.'].join('\n'),
@@ -561,7 +593,7 @@ export class Coordinator {
     const task = this.hostTask(host, taskId);
     if (event.type === 'started') {
       if (task.status !== 'queued') fail(409, 'Task is not queued');
-      task.attempts.push({ startedAt: now() });
+      task.attempts.push({ startedAt: now(), messageCount: (task.messages || []).length });
       this.setTaskStatus(task, 'running', task.ownerId, `${this.s.agents[task.agentId]?.name} started work`);
       return { ok: true, task };
     }
@@ -570,6 +602,7 @@ export class Coordinator {
       task.log.push({ at: now(), kind: String(event.kind || 'note').slice(0, 20), text: String(event.text || '').slice(0, 2000) });
       if (task.log.length > 300) task.log.splice(0, task.log.length - 300);
       task.updatedAt = now();
+      if (['skill', 'app', 'agent', 'usage'].includes(event.kind)) this.store.record({ type: `agent.${event.kind}`, spaceId: task.spaceId, taskId: task.id, actor: task.agentId, text: String(event.text || '').slice(0, 2000) });
       this.changed();
     } else if (event.type === 'files') {
       task.files = (event.files || []).map(String).slice(0, 500);
@@ -590,6 +623,14 @@ export class Coordinator {
       return { ok: true };
     }
     if (task.status !== 'running') fail(409, 'Task is not running');
+    if (!result.error && ((task.messages || []).length > (task.attempts.at(-1)?.messageCount ?? (task.messages || []).length) || result.continuation)) {
+      if (task.attempts.length >= 20) return this.hostResult(host, taskId, { error: 'Task reached the 20-turn limit. Review the trace before continuing.' });
+      if (result.continuation) task.feedback.push({ by: task.ownerId, text: String(result.continuation).slice(0, 4000), at: now() });
+      task.log.push({ at: now(), kind: 'note', text: result.summary || 'Continuing with new instructions' });
+      const attempt = task.attempts.at(-1); if (attempt) attempt.finishedAt = now();
+      this.setTaskStatus(task, 'queued', task.ownerId, 'continuing with updated context');
+      return { ok: true };
+    }
     if (result.ask && !result.error && this.routeAsk(task, result.ask)) {
       task.log.push({ at: now(), kind: 'note', text: `Asked ${result.ask.to}; waiting for the answer` });
       const attempt = task.attempts.at(-1);
@@ -914,7 +955,9 @@ export class Coordinator {
       hosts: Object.values(this.s.hosts).filter((h) => h.ownerId === personId || agents.some((a) => a.hostId === h.id))
         .map(({ id, name, ownerId, online, lastSeen }) => ({ id, name, ownerId, online, lastSeen })),
       agents: agents.map((a) => ({ ...a, online: Boolean(this.s.hosts[a.hostId]?.online), busy: busy.has(a.id) })),
-      tasks: Object.values(this.s.tasks).filter(inSpaces).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+      // Each task's latest log lines only: the window redraws on every change.
+      tasks: Object.values(this.s.tasks).filter(inSpaces).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .map((t) => (t.log?.length > LOG_IN_VIEW ? { ...t, log: t.log.slice(-LOG_IN_VIEW), logTrimmed: t.log.length - LOG_IN_VIEW } : t)),
       approvals: Object.values(this.s.approvals).filter((a) => a.ownerId === personId && a.status === 'pending'),
       waitingOn: Object.values(this.s.approvals).filter((a) => inSpaces(a) && a.status === 'pending' && a.ownerId !== personId)
         .map(({ id, spaceId, ownerId, taskId, title, kind }) => ({ id, spaceId, ownerId, taskId, title, kind })),
@@ -933,10 +976,15 @@ export class Coordinator {
   changed() {
     this.store.save();
     if (this.broadcastTimer) return;
+    // Every change makes every window fetch the whole state again. A running agent logs many lines a
+    // second, so tell windows at most every 300 ms while busy (the first change after a quiet moment
+    // still goes out in 60 ms); otherwise the window spends all its time re-downloading and redrawing.
+    const wait = Math.max(60, 300 - (Date.now() - (this.lastBroadcast || 0)));
     this.broadcastTimer = setTimeout(() => {
       this.broadcastTimer = null;
+      this.lastBroadcast = Date.now();
       for (const stream of this.streams) stream.write(`event: changed\ndata: ${JSON.stringify({ version: this.s.version })}\n\n`);
-    }, 60);
+    }, wait);
   }
 
   // ---------- HTTP ----------
@@ -1052,6 +1100,7 @@ export class Coordinator {
         case 'POST agents': return this.registerAgent(host, body);
         case 'POST agents/update': return this.updateAgent(host, sub[1], body);
         case 'POST agents/remove': return this.removeAgent(host, sub[1]);
+        case 'POST tasks/spawn': return this.spawnForTask(host, sub[1], body);
         case 'POST tasks/event': return this.hostEvent(host, sub[1], body);
         case 'POST tasks/result': return this.hostResult(host, sub[1], body);
         case 'POST approvals': return this.hostApproval(host, body);
@@ -1076,6 +1125,12 @@ export class Coordinator {
       case 'POST devices/revoke': return this.revokeDevices(me.id, body.kind === 'desktop' ? 'desktop' : 'phone');
       case 'POST hosts': return this.registerHost(me.id, body);
       case 'POST tasks': return this.createTask(me.id, body);
+      case 'POST tasks/:id/message': return this.messageTask(me.id, b, body);
+      case 'POST workspace/action': {
+        if (!this.localAction) fail(503, 'The desktop host is not ready');
+        if (['saveKey', 'githubLogin'].includes(body.action)) fail(403, 'Connect credentials on the desktop');
+        return this.localAction(me.id, body);
+      }
       case 'POST tasks/:id/revise': return this.reviseTask(me.id, b, body);
       case 'POST tasks/:id/accept': return this.acceptTask(me.id, b, body);
       case 'POST tasks/:id/cancel': return this.cancelTask(me.id, b);

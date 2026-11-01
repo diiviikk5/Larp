@@ -72,7 +72,7 @@ export class Store {
           if (this.db) await this.db.saveState(this.state);
         })
         .catch((error) => console.error('[larp] could not save state:', error.message));
-    }, 50);
+    }, 500); // at most twice a second while an agent works; flush() still saves everything on exit
   }
 
   record(event) {
