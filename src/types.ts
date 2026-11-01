@@ -103,6 +103,7 @@ export type DeviceConfig = {
   mode: 'host' | 'join' | null; url: string | null; lan: boolean; splash?: boolean; urls: string[];
   people: { id: string; name: string; token: string }[]; activePersonId: string | null;
   host: null | { online: boolean; hostId: string; running: string[]; agents: Record<string, LocalAgent>; name: string };
+  others?: { label: string; mode: 'host' | 'join'; url: string | null }[];
 };
 
 /** An app connected to this desktop (Swasthya, Kosh); its token stays in the main process. */
@@ -116,6 +117,8 @@ declare global {
       config(): Promise<DeviceConfig>;
       createSpace(args: { spaceName: string; kind: string; name: string; lan: boolean }): Promise<DeviceConfig>;
       joinSpace(args: { url: string; code: string; name: string }): Promise<DeviceConfig>;
+      joinAnother(args: { url: string; code: string; name: string; label: string }): Promise<DeviceConfig>;
+      switchDevice(args: { index: number; label: string }): Promise<DeviceConfig>;
       addPerson(args: { code: string; name: string }): Promise<DeviceConfig>;
       switchPerson(args: { id: string }): Promise<DeviceConfig>;
       addAgent(args: Record<string, unknown>): Promise<Agent>;

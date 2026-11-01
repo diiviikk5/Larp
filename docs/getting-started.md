@@ -12,6 +12,8 @@ One person hosts the space (here: Divik). Everyone installs Larp and adds their 
 
 ## Friends
 
+Already set up Larp with your own space? Open the space menu (top left) → **Join another space** and paste the invite. Your own space is saved in that menu under "On other computers", so you can switch back any time; while you are in the other space, yours pauses.
+
 The message the host sends has everything:
 
 1. Install Larp from the link in the message (and Tailscale, if the message says so).

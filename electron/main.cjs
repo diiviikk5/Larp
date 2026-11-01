@@ -83,7 +83,8 @@ async function startCoordinator() {
 async function startHost() {
   if (!config.host?.token) return;
   const { Host } = await load('host.mjs');
-  host = new Host({ url: config.url, token: config.host.token, dataDir: path.join(dataDir(), 'host'), onChange: notify, appContext: readApps });
+  // Each space this device has joined keeps its own agents (hostDir); the first one uses 'host'.
+  host = new Host({ url: config.url, token: config.host.token, dataDir: path.join(dataDir(), config.hostDir || 'host'), onChange: notify, appContext: readApps });
   await host.start();
 }
 
@@ -96,6 +97,26 @@ async function postJson(url, route, body, token) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
   return data;
+}
+
+/** A space address as typed or pasted: http(s)://host[:port], no path. */
+function spaceAddress(url) {
+  const base = String(url || '').trim().replace(/\/$/, '');
+  if (!/^https?:\/\/[^\s/]+$/.test(base)) throw new Error('Enter the space address, like https://larp.example.com or http://192.168.1.20:47821');
+  return base;
+}
+
+/** The space this device is in now, as it's saved in "other spaces" when the device moves to another. */
+function currentProfile(label) {
+  const { mode, url, lan, people, activePersonId, host: h, hostDir } = config;
+  return { label: label || (mode === 'host' ? 'My space (this computer)' : url), mode, url, lan, people, activePersonId, host: h, hostDir: hostDir || 'host' };
+}
+
+/** Stop this device's agents and, if it hosts a space, that space's coordinator. */
+async function leaveCurrent() {
+  await host?.stop();
+  host = null;
+  if (coordinator) { await coordinator.close(); coordinator = null; }
 }
 
 function person(id) {
@@ -114,6 +135,8 @@ function view() {
     people: config.people,
     activePersonId: config.activePersonId,
     host: host ? { ...host.status(), name: config.host?.name } : null,
+    // Spaces on other computers (or this one's own) this device has been in, to switch back to.
+    others: (config.others || []).map((o) => ({ label: o.label, mode: o.mode, url: o.url })),
   };
 }
 
@@ -136,12 +159,50 @@ const handlers = {
 
   async joinSpace({ url, code, name }) {
     if (config.mode) throw new Error('This device is already set up');
-    const base = String(url || '').trim().replace(/\/$/, '');
-    if (!/^https?:\/\/[^\s/]+$/.test(base)) throw new Error('Enter the space address, like https://larp.example.com or http://192.168.1.20:47821');
+    const base = spaceAddress(url);
     const joined = await postJson(base, 'join', { code, name });
     const hostName = `${joined.person.name}'s laptop`;
     const registered = await postJson(base, 'hosts', { name: hostName }, joined.token);
     Object.assign(config, { mode: 'join', url: base, people: [{ id: joined.person.id, name: joined.person.name, token: joined.token }], activePersonId: joined.person.id, host: { id: registered.host.id, token: registered.token, name: hostName } });
+    await saveConfig();
+    await startHost();
+    return view();
+  },
+
+  /**
+   * Join a space on another computer while this device is already in one. The current space is
+   * saved under "other spaces" to switch back to; if this device hosts it, it pauses meanwhile.
+   */
+  async joinAnother({ url, code, name, label }) {
+    const base = spaceAddress(url);
+    if (config.mode === 'join' && config.url === base) throw new Error("You're already in that space");
+    // Join first, so a wrong code leaves everything as it was.
+    const joined = await postJson(base, 'join', { code, name });
+    const hostName = `${joined.person.name}'s ${process.platform === 'darwin' ? 'Mac' : 'laptop'}`;
+    const registered = await postJson(base, 'hosts', { name: hostName }, joined.token);
+    const others = (config.others || []).filter((o) => o.url !== base);
+    if (config.mode) others.unshift(currentProfile(label));
+    await leaveCurrent();
+    Object.assign(config, {
+      mode: 'join', url: base, lan: false, others,
+      people: [{ id: joined.person.id, name: joined.person.name, token: joined.token }], activePersonId: joined.person.id,
+      host: { id: registered.host.id, token: registered.token, name: hostName }, hostDir: `host-${registered.host.id}`,
+    });
+    await saveConfig();
+    await startHost();
+    return view();
+  },
+
+  /** Go back to a space this device was in before (saving the current one in its place). */
+  async switchDevice({ index, label }) {
+    const others = [...(config.others || [])];
+    const [target] = others.splice(Number(index), 1);
+    if (!target) throw new Error('That space is no longer saved on this device');
+    others.unshift(currentProfile(label));
+    await leaveCurrent();
+    Object.assign(config, { ...target, others });
+    delete config.label;
+    if (config.mode === 'host') await startCoordinator();
     await saveConfig();
     await startHost();
     return view();
