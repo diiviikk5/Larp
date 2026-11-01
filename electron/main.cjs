@@ -141,16 +141,7 @@ async function startHost() {
   await host.start();
 }
 
-async function postJson(url, route, body, token) {
-  const response = await fetch(`${url}/api/${route}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    body: JSON.stringify(body),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
-  return data;
-}
+const { postJson } = require('./space-network.cjs');
 
 /** A space address as typed or pasted: http(s)://host[:port], no path. */
 function spaceAddress(url) {
