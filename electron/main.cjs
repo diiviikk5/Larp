@@ -28,10 +28,63 @@ async function codexModels() {
 const codexBin = () => process.env.LARP_CODEX || 'codex';
 const load = (file) => import(pathToFileURL(path.join(__dirname, '..', 'server', file)).href);
 
-async function saveConfig() {
-  await fs.mkdir(dataDir(), { recursive: true });
-  await fs.writeFile(configFile() + '.tmp', JSON.stringify(config, null, 2));
-  await fs.rename(configFile() + '.tmp', configFile());
+// Everything Larp prints also goes to <data>/larp.log (kept under 1 MB), so a start that went wrong can be read afterwards.
+function startLog() {
+  const fsSync = require('node:fs');
+  const file = path.join(dataDir(), 'larp.log');
+  try {
+    fsSync.mkdirSync(dataDir(), { recursive: true });
+    if (fsSync.existsSync(file) && fsSync.statSync(file).size > 1_000_000) fsSync.renameSync(file, file + '.old');
+  } catch { /* logging is best effort */ }
+  for (const level of ['log', 'warn', 'error']) {
+    const original = console[level].bind(console);
+    console[level] = (...args) => {
+      original(...args);
+      const line = args.map((a) => (a instanceof Error ? a.stack : typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
+      try { fsSync.appendFileSync(file, `${new Date().toISOString()} ${level} ${line}\n`); } catch { /* ignore */ }
+    };
+  }
+  console.log(`[larp] ${app.getVersion()} starting (${process.argv.slice(1).join(' ') || 'no arguments'})`);
+}
+
+/**
+ * Bring this device's part of the space up: its coordinator, if it hosts the space, then its agents.
+ * Runs at start and again every few seconds until both are up, so one failed start (a port still held
+ * by the copy that was just updated, a slow network) never leaves the app stuck.
+ */
+let bringingUp = null;
+let upTimer = null;
+function bringUp() {
+  bringingUp ||= (async () => {
+    try {
+      if (config.mode === 'host' && !coordinator) { await startCoordinator(); await saveConfig(); notify(); }
+    } catch (error) {
+      await coordinator?.close().catch(() => {});
+      coordinator = null;
+      console.error('[larp] could not start this space:', error.stack || error.message);
+    }
+    try {
+      if (config.host?.token && !host && (config.mode !== 'host' || coordinator)) { await startHost(); notify(); }
+    } catch (error) {
+      host = null;
+      console.error('[larp] could not connect this computer\'s agents:', error.stack || error.message);
+    }
+    const up = (config.mode !== 'host' || coordinator) && (!config.host?.token || host);
+    if (up) { clearInterval(upTimer); upTimer = null; } else if (!upTimer && config.mode) upTimer = setInterval(bringUp, 5000);
+    return up;
+  })().finally(() => { bringingUp = null; });
+  return bringingUp;
+}
+
+// Saves run one after another: two at once (the apps connecting while a space is created) would share the .tmp file.
+let saving = Promise.resolve();
+function saveConfig() {
+  saving = saving.catch(() => {}).then(async () => {
+    await fs.mkdir(dataDir(), { recursive: true });
+    await fs.writeFile(configFile() + '.tmp', JSON.stringify(config, null, 2));
+    await fs.rename(configFile() + '.tmp', configFile());
+  });
+  return saving;
 }
 
 function notify() {
@@ -206,17 +259,33 @@ const handlers = {
   },
 
   /** Go back to a space this device was in before (saving the current one in its place). */
+  /** Try again now to bring this device's space and agents up (the "Can't reach the space" screen). */
+  async retry() {
+    await bringUp();
+    return view();
+  },
+
+  /** Step out of the current space on this device (it stays saved under other spaces), back to the start screen. */
+  async leaveSpace({ label } = {}) {
+    const others = [...(config.others || [])];
+    if (config.mode) others.unshift(currentProfile(label));
+    await leaveCurrent();
+    clearInterval(upTimer); upTimer = null;
+    Object.assign(config, { mode: null, url: null, lan: false, people: [], activePersonId: null, host: null, hostDir: null, others });
+    await saveConfig();
+    return view();
+  },
+
   async switchDevice({ index, label }) {
     const others = [...(config.others || [])];
     const [target] = others.splice(Number(index), 1);
     if (!target) throw new Error('That space is no longer saved on this device');
-    others.unshift(currentProfile(label));
+    if (config.mode) others.unshift(currentProfile(label));
     await leaveCurrent();
     Object.assign(config, { ...target, others });
     delete config.label;
-    if (config.mode === 'host') await startCoordinator();
     await saveConfig();
-    await startHost();
+    await bringUp();
     return view();
   },
 
@@ -602,6 +671,7 @@ function waitForTitle(window, title, timeout) {
 }
 
 app.whenReady().then(async () => {
+  startLog();
   try {
     config = { ...config, ...JSON.parse(await fs.readFile(configFile(), 'utf8')) };
   } catch (error) {
@@ -616,11 +686,10 @@ app.whenReady().then(async () => {
     const { loadEnv } = await load('meko.mjs');
     await loadEnv(path.join(__dirname, '..', '.env'));
     await loadEnv(path.join(dataDir(), '.env'));
-    if (config.mode === 'host') { setStatus('starting coordinator'); await startCoordinator(); await saveConfig(); }
-    setStatus(config.host ? 'connecting your agents' : 'getting ready');
-    await startHost();
+    setStatus(config.mode === 'host' ? 'starting your space' : config.host ? 'connecting your agents' : 'getting ready');
+    await bringUp();
   } catch (error) {
-    console.error('[larp] startup failed:', error.message);
+    console.error('[larp] startup failed:', error.stack || error.message);
   }
   // The family apps that ship with Larp start in the background and connect themselves.
   startApps().catch((error) => console.error('[larp] apps:', error.message));

@@ -1,6 +1,6 @@
 # The demo: two people's agents working together
 
-Divik and Arjun each run Larp 0.6.6 on their own PC, with their own Codex plan. Divik's agent **Sol** and Arjun's agent **Byte** work on one repo together: Sol writes the code and asks Byte for the tests; Arjun approves; Byte writes them on Arjun's PC; Sol finishes with Byte's tests in its workspace; one combined change passes `npm test` and lands on Divik's PC. A second round shows the agents using what Arjun's apps know.
+Divik and Arjun each run Larp 0.6.7 on their own PC, with their own Codex plan. Divik's agent **Sol** and Arjun's agent **Byte** work on one repo together: Sol writes the code and asks Byte for the tests; Arjun approves; Byte writes them on Arjun's PC; Sol finishes with Byte's tests in its workspace; one combined change passes `npm test` and lands on Divik's PC. A second round shows the agents using what Arjun's apps know.
 
 ## Before (5 minutes, once)
 

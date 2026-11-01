@@ -84,6 +84,13 @@ export function useLarp(session: Session | null) {
     return subscribe(session, refresh, setOnline);
   }, [session?.url, session?.token, refresh]);
 
+  // Can't reach the space yet: keep asking, so the app opens by itself as soon as it answers.
+  useEffect(() => {
+    if (!session || state || !error) return;
+    const timer = setInterval(refresh, 4000);
+    return () => clearInterval(timer);
+  }, [session?.url, session?.token, state, error, refresh]);
+
   const act = useCallback(async <T = any,>(method: string, route: string, body?: unknown) => {
     if (!session) throw new Error('Not signed in');
     const result = await call<T>(session, method, route, body);

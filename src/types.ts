@@ -119,6 +119,8 @@ declare global {
       joinSpace(args: { url: string; code: string; name: string }): Promise<DeviceConfig>;
       joinAnother(args: { url: string; code: string; name: string; label: string }): Promise<DeviceConfig>;
       switchDevice(args: { index: number; label: string }): Promise<DeviceConfig>;
+      retry(): Promise<DeviceConfig>;
+      leaveSpace(args: { label?: string }): Promise<DeviceConfig>;
       addPerson(args: { code: string; name: string }): Promise<DeviceConfig>;
       switchPerson(args: { id: string }): Promise<DeviceConfig>;
       addAgent(args: Record<string, unknown>): Promise<Agent>;

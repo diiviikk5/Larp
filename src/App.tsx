@@ -23,7 +23,8 @@ function Desktop() {
   const session = useMemo<Session | null>(() => (device?.url && active ? { url: device.url, token: active.token } : null), [device?.url, active?.token]);
   const larp = useLarp(session);
   if (!device) return <Loading />;
-  if (!device.mode) return <Onboarding onDone={setDevice} />;
+  if (!device.mode) return <Onboarding onDone={setDevice} others={device.others || []} />;
+  if (!larp.state && larp.error) return <Unreachable device={device} error={larp.error} setDevice={setDevice} refresh={larp.refresh} />;
   if (!larp.state) return <Loading error={larp.error} detail={device.url || undefined} />;
   return <Shell larp={larp} state={larp.state} device={device} setDevice={setDevice} reloadDevice={reload} phone={false} />;
 }
@@ -37,7 +38,34 @@ function Loading({ error, detail }: { error?: string; detail?: string }) {
   );
 }
 
-function Onboarding({ onDone }: { onDone: (d: DeviceConfig) => void }) {
+/**
+ * The space can't be reached. Never a dead end: try again (Larp also keeps retrying by itself), go back
+ * to a space this computer was in before, or step out to the start screen to create or join one.
+ */
+function Unreachable({ device, error, setDevice, refresh }: { device: DeviceConfig; error: string; setDevice: (d: DeviceConfig) => void; refresh: () => void }) {
+  const action = useAction();
+  const where = device.url || '';
+  const label = device.mode === 'host' ? 'My space (this computer)' : where;
+  return (
+    <div className="loading">
+      <Mascot pose="sleeping" size={64} />
+      <strong>Can't reach the space</strong>
+      <p>{device.mode === 'host' ? 'This computer hosts it, and it is starting again. This usually takes a few seconds.' : `The computer or server hosting it isn't answering. If it's a teammate's computer, Larp has to be open there, on the same network.`}</p>
+      {where && <code>{where}</code>}
+      <p className="faint small">{error}</p>
+      <div className="row" style={{ gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+        <button className="btn btn-primary" disabled={action.busy} onClick={() => action.run(async () => { setDevice(await window.larp!.retry()); refresh(); })}>Try again</button>
+        {(device.others || []).map((o, index) => (
+          <button key={`${o.url}-${index}`} className="btn" disabled={action.busy} onClick={() => action.run(async () => setDevice(await window.larp!.switchDevice({ index, label })))}>Switch to {o.label}</button>
+        ))}
+        <button className="btn btn-ghost" disabled={action.busy} onClick={() => action.run(async () => setDevice(await window.larp!.leaveSpace({ label })))}>Join or start another space</button>
+      </div>
+      <ErrorText error={action.error} />
+    </div>
+  );
+}
+
+function Onboarding({ onDone, others = [] }: { onDone: (d: DeviceConfig) => void; others?: NonNullable<DeviceConfig['others']> }) {
   const [mode, setMode] = useState<'create' | 'join'>('create');
   const [name, setName] = useState('');
   const [spaceName, setSpaceName] = useState('');
@@ -68,6 +96,14 @@ function Onboarding({ onDone }: { onDone: (d: DeviceConfig) => void }) {
       </aside>
       <main className="onboarding-form">
         <div className="onboarding-card">
+          {others.length > 0 && (
+            <div className="onboarding-back">
+              <p className="faint small">Spaces this computer was in</p>
+              {others.map((o, index) => (
+                <button key={`${o.url}-${index}`} className="btn btn-sm" disabled={action.busy} onClick={() => action.run(async () => onDone(await window.larp!.switchDevice({ index, label: '' })))}>Back to {o.label}</button>
+              ))}
+            </div>
+          )}
           <div className="segmented wide">
             <button aria-pressed={mode === 'create'} onClick={() => setMode('create')}>Start a space</button>
             <button aria-pressed={mode === 'join'} onClick={() => setMode('join')}>Join a space</button>
