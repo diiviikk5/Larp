@@ -11,7 +11,7 @@ import { _electron as electron } from '@playwright/test';
 const out = process.argv[2] || path.join(os.tmpdir(), 'larp-join-another');
 await fs.mkdir(out, { recursive: true });
 const dirs = [await fs.mkdtemp(path.join(os.tmpdir(), 'larp-host-')), await fs.mkdtemp(path.join(os.tmpdir(), 'larp-friend-'))];
-const launch = (data, offset) => electron.launch({ args: ['.'], env: { ...process.env, MEKO_API_KEY: '', YUGABYTE_URL: '', LARP_CLOUD: 'off', LARP_DATA_DIR: data, LARP_NO_SPLASH: '1', LARP_APPS_PORT_OFFSET: String(offset) } });
+const launch = (data, offset) => electron.launch({ ...(process.env.LARP_TEST_EXE ? { executablePath: process.env.LARP_TEST_EXE } : { args: ['.'] }), env: { ...process.env, MEKO_API_KEY: '', YUGABYTE_URL: '', LARP_CLOUD: 'off', LARP_DATA_DIR: data, LARP_NO_SPLASH: '1', LARP_APPS_PORT_OFFSET: String(offset) } });
 const apps = [];
 const open = async (app) => {
   const page = await app.firstWindow();

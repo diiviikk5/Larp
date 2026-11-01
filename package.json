@@ -1,6 +1,6 @@
 {
   "name": "larp",
-  "version": "0.6.7",
+  "version": "0.6.8",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
@@ -65,7 +65,7 @@
   "build": {
     "appId": "app.larp.desktop",
     "productName": "Larp",
-    "copyright": "Copyright \u00a9 2026 Divik Arora",
+    "copyright": "Copyright © 2026 Divik Arora",
     "directories": {
       "output": "release"
     },

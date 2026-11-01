@@ -19,7 +19,7 @@ export function Download() {
             <span>Build from source for now: <code>npm install && npm run dist:mac</code> (or <code>dist:linux</code>)</span>
           </div>
         </div>
-        <p className="fine">The installer isn't code-signed yet, so Windows SmartScreen may warn you. Choose <em>More info → Run anyway</em>. It sends nothing anywhere until you create or join a space.</p>
+        <p className="fine">The installer isn't code-signed yet, so Windows SmartScreen may warn you. Choose <em>More info → Run anyway</em>. Choose your installation folder in the setup wizard, including another drive. Settings are stored separately in your Windows user-data folder.</p>
       </section>
 
       <section id="docs" className="block">
