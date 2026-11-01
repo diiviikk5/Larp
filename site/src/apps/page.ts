@@ -67,6 +67,7 @@ document.querySelectorAll<HTMLElement>('.bi').forEach((c) => c.addEventListener(
 
 // Is the app running on this computer? A no-cors request resolves only if something answers.
 async function running(a: App) {
+  if (!a.url.includes('localhost')) return true;
   const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 1500);
   try { await fetch(`${a.url}/api/health`, { mode: 'no-cors', signal: ctl.signal }); return true; } catch { return false; } finally { clearTimeout(t); }
 }
@@ -77,7 +78,7 @@ for (const a of APPS) {
   running(a).then((up) => {
     state.dataset.state = up ? 'live' : 'off';
     // From a public https page the browser won't reach localhost, so "not reachable" isn't "not running".
-    state.querySelector('em')!.textContent = up ? 'running here' : 'runs on your computer';
+    state.querySelector('em')!.textContent = up ? (a.url.includes('localhost') ? 'running here' : 'browser demo') : 'runs on your computer';
     if (!up) {
       // Not running: clicking explains how to start it instead of opening a dead tab.
       card.querySelectorAll<HTMLAnchorElement>(`a[href="${open(a)}"]`).forEach((l) => l.addEventListener('click', (e) => { e.preventDefault(); showRun(a); }));
@@ -101,9 +102,9 @@ function showRun(a: App) {
     <button class="sheet-x" aria-label="Close">×</button>
     <p class="sheet-n">${esc(a.kind)} · runs on your computer</p>
     <h3 id="sheet-title">${esc(a.name)}</h3>
-    <p class="sheet-desc">${esc(a.name)} keeps its data on the computer it runs on, so there's nothing to sign up for. Start it from the folder that holds it, then open it at <b>${esc(a.url.replace('http://', ''))}</b>.</p>
+    <p class="sheet-desc">${esc(a.name)} has a browser demo with fictional sample data and browser-local edits. Use the desktop version for agent integration. Browser demo: <b>${esc(a.url.replace('http://', ''))}</b>.</p>
     <div class="cmd"><code>${esc(a.run)}</code><button class="copy">Copy</button></div>
-    <div class="sheet-fit"><span>With Larp</span>Open ${esc(a.name)} → Connect to Larp, and paste its address and token into Larp. Larp's agents can then use its ${a.endpoints} endpoints, and still ask before sharing anything.</div>
+    <div class="sheet-fit"><span>With Larp</span>Use ${esc(a.name)} inside the desktop app for agent integration. Browser demo data stays separate. Larp's agents can then use its ${a.endpoints} endpoints, and still ask before sharing anything.</div>
     <div class="sheet-links"><a href="${open(a)}" target="_blank" rel="noopener">Open ${esc(a.name)} ↗</a>${a.source ? `<a href="${a.source}" target="_blank" rel="noopener">Source ↗</a>` : ''}</div>`;
   sheet.showModal();
   sheet.querySelector('.sheet-x')!.addEventListener('click', () => sheet.close());

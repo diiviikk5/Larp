@@ -6,7 +6,8 @@ const path = require('node:path');
 const fs = require('node:fs/promises');
 const { pathToFileURL } = require('node:url');
 
-const PORT = 47821;
+const requestedPort = Number(process.env.LARP_PORT);
+const PORT = Number.isInteger(requestedPort) && requestedPort >= 1024 && requestedPort <= 65525 ? requestedPort : 47821;
 let win;
 let config = { mode: null, url: null, lan: false, people: [], activePersonId: null, host: null };
 let coordinator = null;

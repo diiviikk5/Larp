@@ -11,14 +11,14 @@ export const APPS: App[] = [
     id: 'swasthya', name: 'Swasthya', script: 'स्वास्थ्य', kind: 'Family health',
     tagline: 'Every heartbeat in your home, looked after.',
     description: 'Medicines and doses, vitals with trends, appointments and an emergency card for each person. Budh, a wellness guide, answers everyday questions and knows when to say "see a doctor".',
-    url: 'http://localhost:5190', run: 'npm --prefix Swasthya run dev', shot: './apps/swasthya.jpg', inside: './apps/swasthya-app.jpg', accent: '#f2a65a',
+    url: 'https://larp-swasthya-demo.vercel.app', run: 'npm --prefix Swasthya run dev', shot: './apps/swasthya.jpg', inside: './apps/swasthya-app.jpg', accent: '#f2a65a',
     features: ['Doses', 'Vitals', 'Appointments', 'Emergency cards', 'Budh'], endpoints: 7, source: 'https://github.com/diiviikk5/Swasthya',
   },
   {
     id: 'kosh', name: 'Kosh', script: 'कोष', kind: 'Family finance',
     tagline: 'Every rupee, every person, one calm place.',
     description: 'Budgets, bills, savings goals and pocket money. Children ask for money and a parent approves; bills get claimed and paid; everyone chips in to goals, and a family feed shows who did what.',
-    url: 'http://localhost:5200', run: 'npm --prefix Kosh run dev', shot: './apps/kosh.jpg', inside: './apps/kosh-app.jpg', accent: '#7a3cff',
+    url: 'https://larp-kosh-demo.vercel.app', run: 'npm --prefix Kosh run dev', shot: './apps/kosh.jpg', inside: './apps/kosh-app.jpg', accent: '#7a3cff',
     features: ['Money requests', 'Bills', 'Goals', 'Budgets', 'Family feed'], endpoints: 7,
   },
   // Built into the desktop app (Apps page). The website hosts a demo copy of each, so they play live here.

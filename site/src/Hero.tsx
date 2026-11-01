@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { StormScene } from './scene';
-import { DecodeCycle, Magnetic, RevealWords, ScrambleLink } from './fx';
+import { DecodeCycle, RevealWords, ScrambleLink } from './fx';
 import { RELEASE } from './release';
 const stormUrl = `${import.meta.env.BASE_URL}storm.png`;
 
@@ -114,7 +114,7 @@ export function Hero() {
           <ScrambleLink href="./memory.html">Memory</ScrambleLink>
           <ScrambleLink href="https://github.com/diiviikk5/Larp#readme">Get started</ScrambleLink>
         </nav>
-        <Magnetic strength={0.25}><ScrambleLink className="nav-cta" href={RELEASE.windows}>Download</ScrambleLink></Magnetic>
+        <ScrambleLink className="nav-cta" href={RELEASE.windows}>Download</ScrambleLink>
       </header>
 
       <p className="hero-caption"><DecodeCycle phrases={['PEOPLE. AGENTS. PROOF.', 'DELEGATE. APPROVE. VERIFY.', 'LOCAL. PRIVATE. YOURS.']} /></p>
@@ -127,8 +127,8 @@ export function Hero() {
           <span className="hero-index">N°01</span>
           <p><RevealWords text="A harness where your agents and your people’s agents work together. Each one runs on its owner’s machine, asks before it acts, and comes back with proof." delay={1.3} /></p>
           <div className="hero-actions">
-            <Magnetic><a className="btn-solid" href={RELEASE.windows} download><span>Download for Windows</span></a></Magnetic>
-            <Magnetic><a className="btn-line" href="https://github.com/diiviikk5/Larp#readme">Get started <span aria-hidden="true">→</span></a></Magnetic>
+            <a className="btn-solid" href={RELEASE.windows} download><span>Download for Windows</span></a>
+            <a className="btn-line" href="https://github.com/diiviikk5/Larp#readme">Get started <span aria-hidden="true">→</span></a>
           </div>
           <small>v{RELEASE.version} · Free · Windows installer, {RELEASE.windowsSize} · macOS and Linux soon</small>
         </div>
