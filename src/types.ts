@@ -30,7 +30,7 @@ export type Task = {
   asks?: AgentAsk[];
   /** Set when this task is another agent's request: the asking task, and the agent that asked. */
   parentId?: string; askedBy?: string; repoId?: string | null;
-  context?: { status: 'pending' | 'ready' | 'off'; at: string; items: Recalled[]; saved?: number; quality?: string | null };
+  context?: { status: 'pending' | 'ready' | 'off' | 'unavailable'; at: string; items: Recalled[]; saved?: number; quality?: string | null };
   /** The result's diff, kept as a Meko artifact; duplicateOf names an earlier task with the identical result. */
   proof?: { artifactId: string | null; hash: string | null; size: number | null; duplicateOf: string | null; at: string; check: boolean | null };
 };
@@ -60,7 +60,7 @@ export type SleepDigest = { at: string; reviewed: number; merged: { kept: string
 export type ProofEntry = { taskId: string; title: string; agentId: string; artifactId: string | null; hash: string | null; size: number | null; duplicateOf: string | null; at: string; check: boolean | null };
 
 export type MemoryView = {
-  configured: boolean; on: boolean; team: string | null; store: 'yugabyte' | 'local';
+  configured: boolean; on: boolean; team: string | null; store: 'yugabyte' | 'local'; via?: 'meko' | 'cloud' | null;
   packs: { agents: Record<string, string | null>; spaces: Record<string, string | null>; proofs?: string | null };
   calls: MekoCall[]; lessons: Lesson[];
   totals: { saved: number; recalls: number };

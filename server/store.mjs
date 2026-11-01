@@ -42,12 +42,12 @@ export class Store {
   async load() {
     await fs.mkdir(this.dir, { recursive: true });
     let saved = this.db ? await this.db.loadState() : null;
-    if (!saved) {
-      try {
-        saved = JSON.parse(await fs.readFile(path.join(this.dir, 'state.json'), 'utf8'));
-      } catch (error) {
-        if (error.code !== 'ENOENT') throw error;
-      }
+    // The database copy can be behind this computer's (saves that never reached it): keep the newer one.
+    try {
+      const local = JSON.parse(await fs.readFile(path.join(this.dir, 'state.json'), 'utf8'));
+      if (!saved || (local.version || 0) > (saved.version || 0)) saved = local;
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
     }
     if (saved) this.state = { ...emptyState(), ...saved };
     // Work that was running when the coordinator stopped cannot still be running.

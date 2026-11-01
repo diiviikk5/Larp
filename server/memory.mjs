@@ -84,8 +84,8 @@ export class Memory {
     return task.context?.status === 'pending' && Date.now() - Date.parse(task.context.at) < PENDING_LIMIT_MS;
   }
 
-  run(label, fn) {
-    fn().catch((error) => console.error(`[larp memory] ${label}:`, error.message)).finally(() => this.c.changed());
+  run(label, fn, onError) {
+    fn().catch((error) => { console.error(`[larp memory] ${label}:`, error.message); onError?.(error); }).finally(() => this.c.changed());
   }
 
   // ---------- before work: recall (and pay royalties) ----------
@@ -159,6 +159,9 @@ export class Memory {
         for (const h of fresh.slice(0, 2)) library.push({ id: h.id, text: h.text, score: h.distance === null ? null : 1 - h.distance, source: lib.source, from: lib.from, datapack: this.meko.name(lib.pack) });
       }
       task.context = { status: 'ready', items: [...items.slice(0, 10), ...library], at: new Date().toISOString(), saved, quality: qualities.includes('high') ? 'high' : qualities[0] || null };
+    }, (error) => {
+      // Memory couldn't be reached: let the agent start now rather than hold the task.
+      task.context = { status: 'unavailable', items: [], at: new Date().toISOString(), error: clip(error.message, 200) };
     });
   }
 
@@ -360,6 +363,7 @@ export class Memory {
       configured: this.configured,
       on: this.on,
       team: this.meko?.team || null,
+      via: this.meko?.via || null, // 'cloud': Meko through Larp Cloud, 'meko': this computer's own key
       store: this.c.db ? 'yugabyte' : 'local',
       packs: {
         // Each agent's memory: the agent_id it uses inside its spaces' datapacks.

@@ -10,7 +10,7 @@ import { _electron as electron } from '@playwright/test';
 const out = process.argv[2] || path.join(os.tmpdir(), 'larp-invite');
 await fs.mkdir(out, { recursive: true });
 const dirs = [await fs.mkdtemp(path.join(os.tmpdir(), 'larp-host-')), await fs.mkdtemp(path.join(os.tmpdir(), 'larp-friend-'))];
-const launch = (data) => electron.launch({ args: ['.'], env: { ...process.env, MEKO_API_KEY: '', LARP_DATA_DIR: data, LARP_NO_SPLASH: '1' } });
+const launch = (data) => electron.launch({ args: ['.'], env: { ...process.env, MEKO_API_KEY: '', YUGABYTE_URL: '', LARP_CLOUD: 'off', LARP_DATA_DIR: data, LARP_NO_SPLASH: '1' } });
 const apps = [];
 try {
   // Host: a space open to the network, then an invite from the People page.

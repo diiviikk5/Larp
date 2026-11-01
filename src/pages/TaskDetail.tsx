@@ -163,6 +163,7 @@ function MemorySection({ ctx, task }: { ctx: Ctx; task: Task }) {
   return (
     <SideSection label="Recalled from Meko">
       {c.status === 'off' && <p className="faint small">Memory was off: the agent saw only this task.</p>}
+      {c.status === 'unavailable' && <p className="faint small">Meko couldn't be reached for this task, so the agent saw only the task itself.</p>}
       {c.status === 'pending' && <p className="faint small">Recalling…</p>}
       {c.status === 'ready' && !c.items.length && <p className="faint small">Nothing relevant remembered yet.</p>}
       {c.status === 'ready' && (c.saved || 0) > 0 && <p className="recall-saved">Meko saved <strong>{(c.saved || 0).toLocaleString()}</strong> tokens on this recall{c.quality ? <span> · {c.quality} match</span> : null}</p>}

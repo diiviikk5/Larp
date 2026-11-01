@@ -21,7 +21,7 @@ await new Promise((r) => feed.listen(0, '127.0.0.1', r));
 const data = await fs.mkdtemp(path.join(os.tmpdir(), 'larp-update-'));
 const app = await electron.launch({
   executablePath: path.join(appDir, 'Larp.exe'),
-  env: { ...process.env, MEKO_API_KEY: '', LARP_DATA_DIR: data, LARP_NO_SPLASH: '1', LARP_UPDATE_URL: `http://127.0.0.1:${feed.address().port}` },
+  env: { ...process.env, MEKO_API_KEY: '', YUGABYTE_URL: '', LARP_CLOUD: 'off', LARP_DATA_DIR: data, LARP_NO_SPLASH: '1', LARP_UPDATE_URL: `http://127.0.0.1:${feed.address().port}` },
 });
 try {
   const page = await app.firstWindow();

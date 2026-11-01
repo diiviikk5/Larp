@@ -18,7 +18,7 @@ const api = http.createServer(async (req, res) => {
 });
 await new Promise((r) => api.listen(0, '127.0.0.1', r));
 const data = await fs.mkdtemp(path.join(os.tmpdir(), 'larp-tgui-'));
-const app = await electron.launch({ args: ['.'], env: { ...process.env, MEKO_API_KEY: '', LARP_DATA_DIR: data, LARP_NO_SPLASH: '1', LARP_TELEGRAM_API: `http://127.0.0.1:${api.address().port}` } });
+const app = await electron.launch({ args: ['.'], env: { ...process.env, MEKO_API_KEY: '', YUGABYTE_URL: '', LARP_CLOUD: 'off', LARP_DATA_DIR: data, LARP_NO_SPLASH: '1', LARP_TELEGRAM_API: `http://127.0.0.1:${api.address().port}` } });
 const errors = [];
 try {
   const page = await app.firstWindow();

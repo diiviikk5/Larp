@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#eeeae2" />
+<meta name="description" content="Larp's agent memory, live: every Meko call Larp agents make through Larp Cloud, stored in YugabyteDB." />
+<title>Memory, live — Larp</title>
+<link rel="icon" href="./favicon.svg" />
+</head>
+<body class="skills-page">
+<nav class="snav">
+  <a class="logo" href="./">LARP</a>
+  <span class="snav-links"><a href="./">Home</a><a href="./skills.html">Skills</a><a href="./apps.html">Apps</a><a href="./memory.html" aria-current="page">Memory</a></span>
+  <a href="./#download" class="snav-cta">Download Larp</a>
+</nav>
+
+<main class="dir">
+  <header class="dir-head">
+    <p class="dir-kicker">Live from Larp Cloud</p>
+    <h1 class="dir-title"><span>Memory</span> <em>that</em> agents share</h1>
+    <p class="dir-lead">Every Larp install gets agent memory with no setup: agents recall what they learned before a task, leave notes for each other, and keep lessons people approved. Each of those is a call to Meko, logged in YugabyteDB. These are the real numbers, refreshed every few seconds. Counts only: nobody's tasks or memories are shown.</p>
+  </header>
+
+  <section class="mem-live" id="live" aria-live="polite"><p class="mem-wait">Asking Larp Cloud…</p></section>
+
+  <section class="mem-how">
+    <p class="dir-kicker">How it works</p>
+    <ol>
+      <li><b>Recall.</b> Before an agent starts, Larp searches Meko (<code>context_search</code>) for what that agent, and its space, learned before.</li>
+      <li><b>Remember.</b> After a task, what the agent did and what the reviewer said goes back in (<code>memory_add</code>).</li>
+      <li><b>Hand off.</b> When one agent asks another for help, the answer is left as a note in the other agent's memory.</li>
+      <li><b>Lessons.</b> A lesson a person approves is promoted (<code>memory_promote</code>) so every agent in the space knows it.</li>
+      <li><b>Proof.</b> Each result's diff is stored as a content-addressed artifact (<code>artifact_put</code>).</li>
+      <li><b>History.</b> Every call, event and the space's state go to YugabyteDB, so the history outlives any one computer.</li>
+    </ol>
+  </section>
+
+  <footer class="dir-foot">
+    <p>Larp Cloud holds the keys, so installs don't. Each Larp gets its own team, and teams never see each other's memories. Prefer your own? Put a <code>MEKO_API_KEY</code> or <code>YUGABYTE_URL</code> in Larp's <code>.env</code>, or <code>LARP_CLOUD=off</code> to keep everything on your computer.</p>
+    <a class="logo-big" href="./">LARP</a>
+  </footer>
+</main>
+<script type="module" src="/src/memory/page.ts"></script>
+</body>
+</html>
