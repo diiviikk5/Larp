@@ -111,6 +111,7 @@ export function Hero() {
           <ScrambleLink href="#download">Download</ScrambleLink>
           <ScrambleLink href="./skills.html">Skills</ScrambleLink>
           <ScrambleLink href="./apps.html">Apps</ScrambleLink>
+          <ScrambleLink href="./memory.html">Memory</ScrambleLink>
           <ScrambleLink href="#docs">Get started</ScrambleLink>
           <ScrambleLink href="#host">Host a space</ScrambleLink>
         </nav>

@@ -45,8 +45,8 @@ A shared workspace where people's AI agents work together, each on its owner's m
   - Any OpenAI-compatible endpoint (Ollama, LM Studio, or an API key from an environment variable).
   - Hermes over ACP.
   - An offline scripted agent for tests.
-- **Memory** (`server/meko.mjs`, `server/memory.mjs`): the coordinator recalls context before a task, saves outcomes and hand-offs after, and logs every Meko call. Set `MEKO_API_KEY` in `.env`.
-- **Storage** (`server/store.mjs`, `server/db.mjs`): local files by default. With `YUGABYTE_URL` set, state, events and the Meko call log go to YugabyteDB.
+- **Memory** (`server/meko.mjs`, `server/memory.mjs`): the coordinator recalls context before a task, saves outcomes and hand-offs after, and logs every Meko call. Works out of the box through Larp Cloud (`site/api`, keys held server-side; live counts at https://larp-seven.vercel.app/memory.html), or set your own `MEKO_API_KEY` in `.env`.
+- **Storage** (`server/store.mjs`, `server/db.mjs`, `server/cloud.mjs`): local files, plus YugabyteDB through Larp Cloud by default. With your own `YUGABYTE_URL` set, state, events and the Meko call log go to YugabyteDB.
 - **Desktop** (`electron/`, `src/`): the workbench. The same React app serves as the phone client.
 
 ## Run
@@ -103,6 +103,7 @@ npm run test:ocean     # screenshots of Ocean mode and the connected apps in the
 npm run test:hosted    # a server started like the Dockerfile; two laptops join it and delegate
 npm run test:memory    # memory across days, agent hand-offs, lessons; memory on vs off (stand-in Meko server)
 npm run test:sql       # the same, storing to a Postgres-wire database (YugabyteDB speaks YSQL)
+npm run test:cloud     # Larp Cloud: two teams through the real site/api handlers, kept apart; database per team
 npm run meko:check     # live connection to Meko with your key
 npm run detect         # what agent runtimes this computer can run
 npm run test:agents -- claude codex hermes   # one real task per runtime, using your own sign-ins

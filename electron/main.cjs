@@ -40,11 +40,14 @@ function notify() {
 
 async function startCoordinator() {
   const { Coordinator } = await load('coordinator.mjs');
-  // Agent memory (Meko) and the optional YugabyteDB store are configured in .env.
+  // Agent memory (Meko) and YugabyteDB come from Larp Cloud, so an install needs no keys. A .env with
+  // your own MEKO_API_KEY / YUGABYTE_URL still wins (a backup, and for running everything yourself).
   const { loadEnv } = await load('meko.mjs');
   const { connectFromEnv } = await load('db.mjs');
+  const { DEFAULT_CLOUD } = await load('cloud.mjs');
   await loadEnv(path.join(__dirname, '..', '.env'));
   await loadEnv(path.join(dataDir(), '.env'));
+  if (process.env.LARP_CLOUD === undefined && app.isPackaged) process.env.LARP_CLOUD = DEFAULT_CLOUD;
   coordinator = new Coordinator({ dataDir: path.join(dataDir(), 'coordinator'), db: await connectFromEnv() });
   await coordinator.init();
   // Prefer the port this space has always used, then the default, then the next free one,

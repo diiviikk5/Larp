@@ -72,7 +72,7 @@ export function runHermes({ prompt, cwd, onLog, requestApproval, signal }) {
     });
 
     (async () => {
-      await call('initialize', { protocolVersion: 1, clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false }, clientInfo: { name: 'larp', version: '0.6.2' } });
+      await call('initialize', { protocolVersion: 1, clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false }, clientInfo: { name: 'larp', version: '0.6.4' } });
       const session = await call('session/new', { cwd, mcpServers: [] });
       const result = await call('session/prompt', { sessionId: session.sessionId, prompt: [{ type: 'text', text: prompt }] });
       if (said.trim()) onLog('say', said.trim());

@@ -46,7 +46,7 @@ export function MemoryPage({ ctx }: { ctx: Ctx }) {
         subtitle="What agents in this space remember across days, the notes they pass each other, and the knowledge people approved. Everything here is a logged call to Meko."
         actions={
           <div className="memory-switch">
-            <span className="small">{!memory.configured ? 'Meko not connected' : memory.on ? 'Memory on' : 'Memory off'}</span>
+            <span className="small">{!memory.configured ? 'Memory off on this computer' : memory.on ? `Meko memory on${memory.via === 'cloud' ? ' · Larp Cloud' : ''}` : 'Memory off'}</span>
             <button className={'switch' + (memory.on ? ' on' : '')} role="switch" aria-checked={memory.on} aria-label="Agent memory" disabled={!memory.configured || action.busy}
               onClick={() => action.run(() => ctx.larp.act('POST', 'memory/toggle', { on: !memory.on }))}><i /></button>
           </div>
@@ -54,7 +54,7 @@ export function MemoryPage({ ctx }: { ctx: Ctx }) {
       />
       <ErrorText error={action.error} />
       {!memory.configured && (
-        <div className="callout">Add <code>MEKO_API_KEY</code> (and optionally <code>LARP_TEAM</code>) to <code>.env</code> and restart Larp to give agents memory. Without it, every agent only sees the task in front of it.</div>
+        <div className="callout">Agent memory is turned off on this computer, so every agent only sees the task in front of it. Larp turns it on by itself through Larp Cloud; this computer has it switched off.</div>
       )}
 
       <div className="memory-stats">

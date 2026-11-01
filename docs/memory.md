@@ -124,16 +124,28 @@ The project's own `larp` datapack (see CLAUDE.md) uses them too:
 - **Sleep:** the coding agent reviews the datapack, corrects outdated memories with `memory_update` (for example the testing skill, when new test scripts were added) and flags anything off-topic instead of deleting it.
 - **Royalties:** every recall made while building reports Meko's `token_savings`; recalls for this feature alone saved 40,400 tokens.
 
+## Larp Cloud: memory with no setup
+
+Every install gets Meko memory and YugabyteDB storage without a key. Larp Cloud is a few functions on the Larp website (`site/api`, deployed with the site on Vercel) that hold the Meko key and the database password as Vercel environment variables, so no key ever ships in the installer.
+
+- On first start, each coordinator joins Larp Cloud (`POST /api/join`) and keeps its team token in `<data>/coordinator/cloud.json`.
+- **Meko** (`POST /api/meko`): Larp sends each tool call there. Larp Cloud serves the shared `divik-larp-team` datapack plus the read-only skills and apps libraries, prefixes every `agent_id` with the team (`tm…~agent-sol-1a2b`), and removes anything another team wrote from results, including promoted lessons. Tools that delete in bulk or create datapacks are refused.
+- **YugabyteDB** (`POST /api/db`): the coordinator's state, events and Meko call log go up in batches every couple of seconds, tagged with the team (`team_id`; the state row's id is the team). It attaches in the background, so startup never waits on the network.
+- **Live page** (`GET /api/live`, https://larp-seven.vercel.app/memory.html): counts of every Meko call across all teams, by kind and day, and the latest calls (tool, time, result count). No task text, memory text, names or team ids.
+
+Your own keys still win: a `MEKO_API_KEY` or `YUGABYTE_URL` in Larp's `.env` makes that coordinator talk to Meko or YugabyteDB directly, and `LARP_CLOUD=off` keeps everything on the computer. Setting up the service: `node work/cloud-env.mjs` stores the keys as Vercel environment variables, then `cd site && npx vercel --prod`. Test: `npm run test:cloud` runs the real handlers against a stand-in Meko and database, with two teams.
+
 ## YugabyteDB
 
-When `YUGABYTE_URL` is set, the coordinator stores its state snapshot, the full event history and every Meko call in YugabyteDB over YSQL (`server/db.mjs`: tables `larp_state`, `larp_events`, `larp_meko_calls`). The memory view's all-time counters, per-agent counts and agent-to-agent links come from SQL over that history. Without it, Larp keeps everything in local files and the view shows the recent log.
+When `YUGABYTE_URL` is set (or Larp Cloud is on), the coordinator stores its state snapshot, the full event history and every Meko call in YugabyteDB over YSQL (`server/db.mjs`: tables `larp_state`, `larp_events`, `larp_meko_calls`). The memory view's all-time counters, per-agent counts and agent-to-agent links come from SQL over that history. Without it, Larp keeps everything in local files and the view shows the recent log.
 
 ## Honest and private
 
 - Nothing is shown as recalled unless Meko returned it.
 - When memory is off, no Meko calls are made, and the call log says so.
 - Only task text, results and reviewer feedback go to Meko. Calendars, budgets and other home data stay on the owner's machine.
-- Keys live in `.env`, never in a datapack or the repo.
+- Keys live in Larp Cloud's environment variables (or your own `.env`), never in the installer, a datapack or the repo.
+- Teams on Larp Cloud never see each other's memories, and the public live page shows counts only.
 
 ## Setup
 

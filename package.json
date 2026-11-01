@@ -1,6 +1,6 @@
 {
   "name": "larp",
-  "version": "0.6.2",
+  "version": "0.6.4",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
@@ -34,7 +34,8 @@
     "test:apps": "node test/apps-builtin.mjs",
     "test:round2": "node test/demo-round2.mjs",
     "test:update": "node test/update.mjs",
-    "test:talk": "node test/agents-talk.mjs"
+    "test:talk": "node test/agents-talk.mjs",
+    "test:cloud": "node test/cloud.mjs"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.3.0",

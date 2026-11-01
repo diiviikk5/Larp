@@ -25,7 +25,8 @@ async function until(fn, label, timeout = 120000) {
   throw new Error(`Timed out waiting for: ${label}`);
 }
 
-const db = await connectFromEnv();
+// Your real space keeps its state in YugabyteDB (one row), so the test only uses the database when asked: LIVE_DB=1.
+const db = process.env.LIVE_DB ? await connectFromEnv() : null;
 console.log(`Meko: live (team ${process.env.LARP_TEAM}) · storage: ${db ? 'YugabyteDB' : 'local files (YugabyteDB not reachable or not set)'}`);
 const meko = new Meko({ apiKey: process.env.MEKO_API_KEY, team: process.env.LARP_TEAM || 'larp' });
 const coordinator = new Coordinator({ dataDir: path.join(root, 'coordinator'), db, meko });

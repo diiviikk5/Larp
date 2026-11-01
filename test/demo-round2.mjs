@@ -14,7 +14,7 @@ const out = process.argv[2] || path.join(os.tmpdir(), 'larp-round2');
 await fs.mkdir(out, { recursive: true });
 const root = await fs.mkdtemp(path.join(os.tmpdir(), 'larp-round2-'));
 const launch = (who, offset, family) => electron.launch({ args: ['.'], env: {
-  ...process.env, MEKO_API_KEY: '', LARP_DATA_DIR: path.join(root, who), LARP_NO_SPLASH: '1',
+  ...process.env, MEKO_API_KEY: '', YUGABYTE_URL: '', LARP_CLOUD: 'off', LARP_DATA_DIR: path.join(root, who), LARP_NO_SPLASH: '1',
   LARP_APPS_PORT_OFFSET: String(offset), LARP_SAMPLE_FAMILY: String(family),
 } });
 const until = async (fn, what, ms = 60_000) => {
