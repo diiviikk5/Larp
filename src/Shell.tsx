@@ -10,6 +10,7 @@ import { Avatar, Kbd, LogoMark, STATUS_LABEL, timeAgo, useAction, useTick } from
 import type { Task } from './types';
 import { confirmDialog, notify, toast } from './feedback';
 import { parseInvite } from './invite';
+import { Workspace, SkillsPage } from './pages/Workspace';
 import { Overview } from './pages/Overview';
 import { Tasks } from './pages/Tasks';
 import { TaskDetail } from './pages/TaskDetail';
@@ -27,7 +28,7 @@ import { Care } from './pages/Care';
 import { useAppearance } from './Appearance';
 import { Companion } from './Companion';
 
-const defaultRoute = (_space?: Space): Route => ({ page: 'overview' });
+const defaultRoute = (_space?: Space): Route => ({ page: 'workspace' });
 
 export function Shell({ larp, state, device, setDevice, reloadDevice, phone }: {
   larp: Larp; state: State; device: DeviceConfig | null; setDevice: (d: DeviceConfig) => void; reloadDevice: () => void; phone: boolean;
@@ -85,6 +86,8 @@ export function Shell({ larp, state, device, setDevice, reloadDevice, phone }: {
   const home = space.kind === 'home';
 
   const nav: { route: Route; label: string; icon: React.ReactElement; badge?: number; tone?: string }[] = [
+    { route: { page: 'workspace' }, label: 'Workspace', icon: <Bot size={16} /> },
+    { route: { page: 'skills' }, label: 'Skills', icon: <Blocks size={16} /> },
     { route: { page: 'overview' }, label: 'Overview', icon: <LayoutGrid size={16} />, badge: state.approvals.filter((a) => a.spaceId === space.id).length, tone: 'warn' },
     ...(home ? [
       { route: { page: 'plans' } as Route, label: 'Plans', icon: <CalendarDays size={16} /> },
@@ -105,6 +108,8 @@ export function Shell({ larp, state, device, setDevice, reloadDevice, phone }: {
 
   const page = (() => {
     switch (route.page) {
+      case 'workspace': return <Workspace ctx={ctx} />;
+      case 'skills': return <SkillsPage ctx={ctx} />;
       case 'overview': return ocean ? <OceanHome ctx={ctx} /> : <Overview ctx={ctx} />;
       case 'tasks': return <Tasks ctx={ctx} initial={route.filter} />;
       case 'task': return <TaskDetail ctx={ctx} id={route.id} tab={route.tab} onBack={() => go(history.at(-1)?.page === 'task' ? { page: 'tasks' } : history.at(-1) || { page: 'tasks' })} />;
@@ -176,7 +181,7 @@ export function Shell({ larp, state, device, setDevice, reloadDevice, phone }: {
         <main className="content" key={route.page + ('id' in route ? route.id : '')}>{page}</main>
         {phone && (
           <nav className="tabbar">
-            <TabButton active={route.page === 'overview'} onClick={() => go({ page: 'overview' })} icon={<LayoutGrid size={19} />} label="Overview" />
+            <TabButton active={route.page === 'workspace'} onClick={() => go({ page: 'workspace' })} icon={<Bot size={19} />} label="Chat" />
             {home && <TabButton active={route.page === 'plans'} onClick={() => go({ page: 'plans' })} icon={<CalendarDays size={19} />} label="Plans" />}
             {home && <TabButton active={route.page === 'money'} onClick={() => go({ page: 'money' })} icon={<Wallet size={19} />} label="Money" />}
             <TabButton active={route.page === 'tasks' || route.page === 'task'} onClick={() => go({ page: 'tasks' })} icon={<ListChecks size={19} />} label="Tasks" />

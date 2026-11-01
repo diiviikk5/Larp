@@ -4,20 +4,24 @@
 // except as scoped answers the owner allowed.
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { Skills } from './skills.mjs';
 import { runAgent } from './adapters/index.mjs';
 import { run, git } from './adapters/process.mjs';
 
-const MAX_PARALLEL = 2;
+const MAX_PARALLEL = 3;
 const DEFAULT_SHARING = { availability: 'ask', budget: 'ask', calendar: 'never' };
 
 export class Host {
   /** appContext: optional async () => [{ name, kind, text }], the owner's apps as text for agents allowed to read them. */
-  constructor({ url, token, dataDir, onChange, appContext }) {
+  constructor({ url, token, dataDir, onChange, appContext, appCall, skillsDir }) {
     this.url = url.replace(/\/$/, '');
     this.token = token;
     this.dataDir = dataDir;
     this.onChange = onChange || (() => {});
     this.appContext = appContext || null;
+    this.appCall = appCall;
+    this.skills = new Skills(skillsDir || path.join(dataDir, 'skills'));
+    this.saving = Promise.resolve();
     this.config = { agents: {} };
     this.running = new Map();   // taskId -> AbortController
     this.applying = new Set();
@@ -41,9 +45,12 @@ export class Host {
   }
 
   async saveConfig() {
-    const file = path.join(this.dataDir, 'host.json');
-    await fs.writeFile(file + '.tmp', JSON.stringify(this.config, null, 2));
-    await fs.rename(file + '.tmp', file);
+    this.saving = this.saving.catch(() => {}).then(async () => {
+      const file = path.join(this.dataDir, 'host.json');
+      await fs.writeFile(file + '.tmp', JSON.stringify(this.config, null, 2));
+      await fs.rename(file + '.tmp', file);
+    });
+    return this.saving;
   }
 
   async api(method, route, body) {
@@ -170,7 +177,7 @@ export class Host {
 
   // ---------- agents ----------
 
-  async addAgent({ ownerToken, name, runtime, model, spaceIds, repoPath, baseUrl, apiKeyEnv, codexHome, useApps }) {
+  async addAgent({ ownerToken, name, runtime, model, spaceIds, repoPath, baseUrl, apiKeyEnv, codexHome, useApps, skills = [] }) {
     if (repoPath) {
       const inside = (await run('git', ['rev-parse', '--is-inside-work-tree'], { cwd: repoPath })).output.trim();
       if (inside !== 'true') throw new Error('That folder is not a git repository');
@@ -179,11 +186,11 @@ export class Host {
       ownerToken, name, runtime, model, spaceIds,
       repo: repoPath ? path.basename(repoPath) : null,
       repoId: repoPath ? await repoIdentity(repoPath) : null,
-      usesApps: Boolean(useApps),
+      usesApps: Boolean(useApps), skills,
     });
     this.config.agents[agent.id] = {
       runtime, model: model || null, repoPath: repoPath || null,
-      baseUrl: baseUrl || null, apiKeyEnv: apiKeyEnv || null, codexHome: codexHome || null, useApps: Boolean(useApps),
+      baseUrl: baseUrl || null, apiKeyEnv: apiKeyEnv || null, codexHome: codexHome || null, useApps: Boolean(useApps), skills,
       private: { calendar: [], availability: {}, budget: null },
       sharing: { ...DEFAULT_SHARING },
     };
@@ -198,6 +205,7 @@ export class Host {
     const shared = {};
     for (const key of ['runtime', 'model']) if (key in patch) { local[key] = patch[key]; shared[key] = patch[key]; }
     if ('useApps' in patch) { local.useApps = Boolean(patch.useApps); shared.usesApps = local.useApps; }
+    if ('skills' in patch) { local.skills = [...new Set(patch.skills)].slice(0, 8); shared.skills = local.skills; }
     if ('spaceIds' in patch) shared.spaceIds = patch.spaceIds;
     for (const key of ['baseUrl', 'apiKeyEnv', 'codexHome']) if (key in patch) local[key] = patch[key];
     if (patch.private) local.private = { ...local.private, ...patch.private };
@@ -230,7 +238,8 @@ export class Host {
     const local = this.config.agents[task.agentId];
     const log = (kind, text) => this.api('POST', `tasks/${task.id}/event`, { type: 'log', kind, text }).catch(() => {});
     try {
-      await this.api('POST', `tasks/${task.id}/event`, { type: 'started' });
+      const started = await this.api('POST', `tasks/${task.id}/event`, { type: 'started' });
+      if (started.task) Object.assign(task, started.task);
       if (!local) throw new Error('This agent has no local configuration on this host');
       const workdir = await this.prepareWorkdir(task, local);
       await log('note', local.repoPath ? `Working on branch larp/${task.id} in an isolated worktree` : 'Working in an isolated folder');
@@ -241,15 +250,46 @@ export class Host {
         apps = await this.appContext().catch((error) => { log('note', `Couldn't read your apps: ${error.message}`); return []; });
         if (apps.length) await log('note', `Read ${apps.map((a) => a.name).join(' and ')} for this task`);
       }
+      const skills = await this.skills.load(local.skills, workdir, log);
       const { summary } = await runAgent(local.runtime, {
-        prompt: this.buildPrompt(task, apps),
+        prompt: this.buildPrompt(task, apps, skills),
         cwd: workdir,
         config: local,
+        appCall: local.useApps ? this.appCall : null,
         signal: controller.signal,
         onLog: (kind, text) => log(kind, text),
         requestApproval: (title, detail) => this.requestApproval({ taskId: task.id, title, detail, kind: 'tool' }),
       });
       if (controller.signal.aborted) return;
+      // File requests work with Codex, Claude and the API adapter alike.
+      const readRequest = async (name) => {
+        const file = path.join(workdir, '.larp', name + '.json');
+        try { const value = JSON.parse(await fs.readFile(file, 'utf8')); await fs.unlink(file); return value; }
+        catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+      };
+      const spawn = await readRequest('spawn');
+      if (spawn) {
+        const child = await this.api('POST', `tasks/${task.id}/spawn`, { name: spawn.name, skills: spawn.skills || local.skills || [] });
+        this.config.agents[child.id] = structuredClone(local);
+        this.config.agents[child.id].skills = child.skills;
+        await this.saveConfig(); this.onChange();
+        await log('agent', `Spawned ${child.name}; shares runtime and installed skills, with an isolated task workspace`);
+        await this.api('POST', `tasks/${task.id}/result`, { summary, continuation: `Created agent ${child.name}. You may now ask ${child.name} for help using .larp/ask-${child.name}.md.` });
+        return;
+      }
+      const appRequest = await readRequest('app-request');
+      if (appRequest) {
+        if (!local.useApps || !this.appCall) throw new Error('App access is not enabled for this agent');
+        if (JSON.stringify(appRequest).length > 3500) throw new Error('App request is too large to review; split it into smaller changes');
+        const method = String(appRequest.method || 'GET').toUpperCase();
+        if (method !== 'GET' && !await this.requestApproval({ taskId: task.id, kind: 'tool', title: `Allow ${method} in ${appRequest.id}?`, detail: JSON.stringify(appRequest).slice(0, 4000) })) throw new Error('App change declined');
+        const response = await this.appCall(appRequest);
+        await fs.mkdir(path.join(workdir, '.larp'), { recursive: true });
+        await fs.writeFile(path.join(workdir, '.larp', 'app-result.json'), JSON.stringify(response, null, 2));
+        await log('app', `${method} ${appRequest.id}/${appRequest.path} succeeded; response in .larp/app-result.json`);
+        await this.api('POST', `tasks/${task.id}/result`, { summary, continuation: 'Your app request succeeded. Read .larp/app-result.json and continue. Do not repeat the same write.' });
+        return;
+      }
       const ask = await readAsk(workdir, task);
       if (ask) {
         await log('say', `Asking ${ask.to}: ${ask.text.slice(0, 300)}`);
@@ -305,9 +345,14 @@ export class Host {
     }
   }
 
-  buildPrompt(task, apps = []) {
+  buildPrompt(task, apps = [], skills = []) {
     const parts = [`Task: ${task.title}`, '', task.instructions];
-    if (task.kind === 'general') parts.push('', 'This task wants an answer, not code changes: do not edit files. Reply with a clear, complete answer.');
+    parts.push('', 'You are part of a local agent team. Coordinate concrete work, return evidence, and avoid duplicate effort.');
+    if (!task.parentId) parts.push('To create a specialist when needed, write .larp/spawn.json with {"name":"Tester","skills":[]} and finish your turn. It inherits your runtime, repository and app permission, and may only inherit your assigned skills. Maximum 8 agents per owner per space. You resume after creation.');
+    for (const skill of skills) parts.push('', `Installed skill: ${skill.title} @ ${skill.revision}. Source: ${skill.source}. Local file: ${skill.path}.`, 'Follow these instructions when relevant. Supporting files are beside SKILL.md. State which skill you actually use; do not claim tools you do not have.', skill.instructions);
+    if (apps.length) parts.push('', 'To read more or propose a write, create .larp/app-request.json with {"id":"kosh","method":"GET","path":"summary"} (optional body for writes), then finish. Larp asks approval before writes and resumes you with .larp/app-result.json. Only use documented app routes. Citylines, EduSpace and Studio support GET state, POST records {collection,record}, PATCH records {collection,id,patch}.');
+    if (!apps.length) parts.push('', 'No connected app data was supplied. Do not search this isolated folder for Swasthya or other app data. If asked to read connected apps, explain that the owner should enable app access in agent settings and check that the app is connected.');
+    if (task.kind === 'general') parts.push('', 'This task wants an answer, not code changes: do not edit project files. Internal .larp/ requests for agents or apps are allowed. Reply with a clear, complete answer.');
     for (const app of apps) {
       parts.push('', `From your owner's ${app.name} app (${app.kind}; private to them, use it only for this task):`, app.text);
     }
@@ -325,10 +370,10 @@ export class Host {
       parts.push('Continue the task using these answers. Do not ask the same thing again.');
     }
     if (task.peers?.length) {
-      parts.push('', 'Other agents in this space you can ask for help (each works for a different person, on their own computer):',
-        ...task.peers.map((p) => `- ${p.name}, ${p.owner}'s agent${p.apps ? `; it can read ${p.owner}'s health and money apps (Swasthya, Kosh)` : ''}${p.online ? '' : ' (offline right now)'}`),
+      parts.push('', 'Other agents in this space you can ask for help (including specialists on your own computer):',
+        ...task.peers.map((p) => `- ${p.name}, ${p.owner}'s agent; skills: ${(p.skills || []).join(', ') || 'general'}${p.apps ? `; it can read ${p.owner}'s health and money apps (Swasthya, Kosh)` : ''}${p.online ? '' : ' (offline right now)'}`),
         'To ask one, create the file .larp/ask-<Name>.md (for example .larp/ask-' + task.peers[0].name + '.md) containing exactly what you need,',
-        'then stop and finish your turn. Larp delivers it, their owner approves, and you are resumed in this same workspace with their answer.',
+        'then stop and finish your turn. Larp delivers it, the owner approves if it belongs to someone else, and you are resumed in this same workspace with their answer.',
         'Only ask when the task calls for it or the other agent knows something you do not (their owner\'s apps, data or part of the work).');
     }
     if (task.check) parts.push('', `When you finish, Larp will run this check in the workspace: ${task.check}`, 'Make it pass. Do not modify the check itself unless asked.');

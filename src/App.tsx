@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Component, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Code2, Home, Smartphone } from 'lucide-react';
 import { useLarp, type Session } from './api';
 import type { DeviceConfig } from './types';
@@ -10,9 +10,42 @@ import { Shell } from './Shell';
 import { ConfirmHost, Toaster } from './feedback';
 import { useAppearance } from './Appearance';
 
+/**
+ * If a page ever throws while drawing, show what happened and a way back instead of a blank window
+ * (React unmounts everything on an uncaught render error). Your space and agents keep running.
+ */
+class Recover extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(error: Error) { console.error('[larp] the window crashed while drawing:', error); }
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div className="loading">
+        <Mascot pose="sleeping" size={64} />
+        <strong>Something went wrong on this screen</strong>
+        <p>Your space and your agents keep running. Reload to continue.</p>
+        <p className="faint small">{this.state.error.message}</p>
+        <button className="btn btn-primary" onClick={() => location.reload()}>Reload</button>
+      </div>
+    );
+  }
+}
+
 export function App() {
   useAppearance();
-  return <>{window.larp ? <Desktop /> : <Phone />}<Toaster /><ConfirmHost />{window.larp && <UpdateBar />}</>;
+  useEffect(() => {
+    const bridge = async (event: MessageEvent) => {
+      if (!window.larp || (location.protocol !== 'file:' && event.origin !== location.origin) || event.data?.type !== 'larp-app-bridge') return;
+      const { id } = event.data;
+      if (!['citylines', 'eduspace', 'studio'].includes(id)) return;
+      const frame = [...document.querySelectorAll('iframe')].find((f) => f.contentWindow === event.source && new URL(f.src, location.href).pathname.includes('/' + id + '/'));
+      if (!frame) return;
+      try { const snapshot = await window.larp.appSnapshot(event.data); (event.source as Window).postMessage({ type: 'larp-app-state', id, profile: event.data.profile || '', snapshot }, location.protocol === 'file:' ? '*' : event.origin); } catch { /* host is starting */ }
+    };
+    window.addEventListener('message', bridge); return () => window.removeEventListener('message', bridge);
+  }, []);
+  return <><Recover>{window.larp ? <Desktop /> : <Phone />}</Recover><Toaster /><ConfirmHost />{window.larp && <UpdateBar />}</>;
 }
 
 function Desktop() {
@@ -22,6 +55,14 @@ function Desktop() {
   const active = device?.people.find((p) => p.id === device.activePersonId);
   const session = useMemo<Session | null>(() => (device?.url && active ? { url: device.url, token: active.token } : null), [device?.url, active?.token]);
   const larp = useLarp(session);
+  // While the space can't be reached, re-read this computer's settings too: the address shown may be
+  // one it has since moved away from (a space it switched out of, a host that came up on another port).
+  const stuck = !larp.state && Boolean(larp.error);
+  useEffect(() => {
+    if (!stuck) return;
+    const timer = setInterval(reload, 4000);
+    return () => clearInterval(timer);
+  }, [stuck, reload]);
   if (!device) return <Loading />;
   if (!device.mode) return <Onboarding onDone={setDevice} others={device.others || []} />;
   if (!larp.state && larp.error) return <Unreachable device={device} error={larp.error} setDevice={setDevice} refresh={larp.refresh} />;
@@ -85,8 +126,8 @@ function Onboarding({ onDone, others = [] }: { onDone: (d: DeviceConfig) => void
         <div className="onboarding-brand"><LogoMark size={28} /><span>larp</span></div>
         <div className="onboarding-pitch">
           <div className="onboarding-mascot"><Mascot pose="idle" size={96} /></div>
-          <h1>Your people's agents,<br />working together.</h1>
-          <p>Every agent runs on its owner's computer, under its owner's account, and asks before it acts. Larp is where the work meets.</p>
+          <h1>Your agents.<br />One shared workspace.</h1>
+          <p>Create a team on this computer. Give agents skills, let them work together, and follow every task, handoff and memory from one place.</p>
           <ul>
             <li><strong>Delegate across machines.</strong> Send a task to a teammate's agent; it runs in their repo and comes back with a diff and a check result.</li>
             <li><strong>Share without oversharing.</strong> Plan with family using answers from private calendars and budgets that never leave anyone's device.</li>
@@ -109,14 +150,14 @@ function Onboarding({ onDone, others = [] }: { onDone: (d: DeviceConfig) => void
             <button aria-pressed={mode === 'join'} onClick={() => setMode('join')}>Join a space</button>
           </div>
           <h2>{mode === 'create' ? 'Start a new space' : 'Join with an invite'}</h2>
-          <p className="faint">{mode === 'create' ? 'This computer will host it. Others join with a code.' : 'Paste the invite someone in the space sent you.'}</p>
+          <p className="faint">{mode === 'create' ? 'Your agents run on this computer. Phone and Telegram control are optional.' : 'Paste the invite someone in the space sent you.'}</p>
           <div className="form">
             <Field label="Your name" htmlFor="your-name"><input id="your-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Divik" /></Field>
             {mode === 'create' ? (
               <>
                 <Field label="Kind of space">
                   <div className="kind-cards">
-                    <button className={kind === 'build' ? 'selected' : ''} aria-pressed={kind === 'build'} onClick={() => setKind('build')}><Code2 size={18} /><strong>Build</strong><small>Code with teammates' agents</small></button>
+                    <button className={kind === 'build' ? 'selected' : ''} aria-pressed={kind === 'build'} onClick={() => setKind('build')}><Code2 size={18} /><strong>Build</strong><small>Build with your agent team</small></button>
                     <button className={kind === 'home' ? 'selected' : ''} aria-pressed={kind === 'home'} onClick={() => setKind('home')}><Home size={18} /><strong>Home</strong><small>Plans, money and care</small></button>
                   </div>
                 </Field>

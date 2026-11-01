@@ -1,7 +1,7 @@
 // Electron main process. Each desktop runs a host (its agents), and the person who
 // creates a space also runs the coordinator. The renderer talks to the coordinator
 // over HTTP like the phone does; this file only exposes device-local actions.
-const { app, BrowserWindow, ipcMain, dialog, globalShortcut, Menu, shell, screen } = require('electron');
+const { safeStorage, app, BrowserWindow, ipcMain, dialog, globalShortcut, Menu, shell, screen } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs/promises');
 const { pathToFileURL } = require('node:url');
@@ -11,6 +11,7 @@ let win;
 let config = { mode: null, url: null, lan: false, people: [], activePersonId: null, host: null };
 let coordinator = null;
 let host = null;
+let appRecords;
 let builtinApps = [];   // servers for the apps shipped inside Larp (Swasthya, Kosh)
 const dataDir = () => path.join(app.getPath('userData'), 'larp');
 const configFile = () => path.join(dataDir(), 'config.json');
@@ -25,7 +26,7 @@ async function codexModels() {
   } catch { return {}; }
 }
 // The Codex CLI to run: LARP_CODEX (a full path, for a copy installed elsewhere) or `codex` on the PATH.
-const codexBin = () => process.env.LARP_CODEX || 'codex';
+const codexBin = require('../server/runtime-paths.cjs').codexCommand;
 const load = (file) => import(pathToFileURL(path.join(__dirname, '..', 'server', file)).href);
 
 // Everything Larp prints also goes to <data>/larp.log (kept under 1 MB), so a start that went wrong can be read afterwards.
@@ -137,8 +138,99 @@ async function startHost() {
   if (!config.host?.token) return;
   const { Host } = await load('host.mjs');
   // Each space this device has joined keeps its own agents (hostDir); the first one uses 'host'.
-  host = new Host({ url: config.url, token: config.host.token, dataDir: path.join(dataDir(), config.hostDir || 'host'), onChange: notify, appContext: readApps });
+  host = new Host({ url: config.url, token: config.host.token, dataDir: path.join(dataDir(), config.hostDir || 'host'), onChange: notify, appContext: readApps, appCall: (args) => handlers.appsCall(args), skillsDir: path.join(dataDir(), 'skills') });
+  const { AppRecords } = await load('app-records.mjs');
+  appRecords = new AppRecords(path.join(dataDir(), 'app-records'), config.appProfiles ||= {});
+  for (const [id, encrypted] of Object.entries(config.apiKeys || {})) {
+    try { process.env['LARP_OPENAI_' + id.replace(/[^A-Za-z0-9]/g, '_')] = safeStorage.decryptString(Buffer.from(encrypted, 'base64')); } catch { console.warn('[larp] saved API key could not be unlocked'); }
+  }
   await host.start();
+  if (coordinator) coordinator.localAction = workspaceAction;
+}
+
+async function workspaceAction(personId, { action, ...args }) {
+  const owner = config.people.find((p) => p.id === personId);
+  if (!owner || !host) throw new Error('This action requires an account on the host desktop');
+  const mine = (id) => {
+    const agent = coordinator?.s.agents[id] || host.me.agents.find((a) => a.id === id);
+    if (!agent || agent.ownerId !== personId || !host.config.agents[id]) throw new Error('Choose one of your local agents');
+    return agent;
+  };
+  if (action === 'skills') return host.skills.list();
+  if (action === 'skillDetail') {
+    const meta = await host.skills.installed(args.slug);
+    return { ...meta, instructions: await fs.readFile(path.join(host.skills.dir, args.slug, 'SKILL.md'), 'utf8') };
+  }
+  if (action === 'installSkill') return host.skills.install(args.slug);
+  if (action === 'assignSkills') { mine(args.agentId); return host.updateAgent(args.agentId, { skills: args.skills }); }
+  if (action === 'createAgent') {
+    const envName = 'LARP_OPENAI_' + personId.replace(/[^A-Za-z0-9]/g, '_');
+    if (!['codex', 'openai'].includes(args.runtime)) throw new Error('Choose Codex or OpenAI');
+    return host.addAgent({ ownerToken: owner.token, name: args.name, runtime: args.runtime, model: args.model || (args.runtime === 'openai' ? 'gpt-6-luna' : null), spaceIds: [args.spaceId], repoPath: args.repoPath || null, useApps: Boolean(args.useApps), skills: args.skills || [], baseUrl: 'https://api.openai.com/v1', apiKeyEnv: args.runtime === 'openai' ? envName : null, codexHome: args.codexProfile ? codexProfileDir() : null });
+  }
+  if (action === 'cloneAgent') {
+    const agent = mine(args.agentId); const local = host.config.agents[args.agentId];
+    return host.addAgent({ ...local, ownerToken: owner.token, name: args.name, spaceIds: [args.spaceId || agent.spaceIds[0]], skills: local.skills || [] });
+  }
+  if (action === 'connection') {
+    const { run } = await load('adapters/process.mjs');
+    const probe = (command, args, shell = false) => run(command, args, { timeout: 8000, shell }).catch(() => ({ exitCode: 1 }));
+    const [github, git, codex] = await Promise.all([probe('gh', ['auth', 'status']), probe('git', ['--version']), probe(process.platform === 'win32' ? `"${codexBin()}"` : codexBin(), ['--version'], process.platform === 'win32')]);
+    return { apiKey: Boolean(config.apiKeys?.[personId]), github: github.exitCode === 0, git: git.exitCode === 0, codex: codex.exitCode === 0 };
+  }
+  if (action === 'saveKey') {
+    if (!safeStorage.isEncryptionAvailable()) throw new Error('OS credential encryption is unavailable');
+    const key = String(args.key || '').trim();
+    if (!key.startsWith('sk-') || key.length < 20) throw new Error('Enter an OpenAI API key');
+    const response = await fetch('https://api.openai.com/v1/models', { headers: { Authorization: 'Bearer ' + key }, signal: AbortSignal.timeout(12000) });
+    if (!response.ok) throw new Error('OpenAI did not accept this key (' + response.status + ')');
+    config.apiKeys ||= {}; config.apiKeys[personId] = safeStorage.encryptString(key).toString('base64');
+    process.env['LARP_OPENAI_' + personId.replace(/[^A-Za-z0-9]/g, '_')] = key;
+    await saveConfig(); return { ok: true };
+  }
+  if (action === 'githubLogin') {
+    const { spawn } = require('node:child_process');
+    const child = spawn('gh', ['auth', 'login', '--hostname', 'github.com', '--git-protocol', 'https', '--web'], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    return new Promise((resolve, reject) => {
+      let output = ''; let settled = false;
+      const done = (value) => { if (!settled) { settled = true; resolve(value); } };
+      const read = (chunk) => { output += chunk.toString(); const match = output.match(/code:\s*([A-Z0-9-]{6,})/i); if (match) { shell.openExternal('https://github.com/login/device'); done({ code: match[1] }); } };
+      child.stdout.on('data', read); child.stderr.on('data', read); child.on('error', reject);
+      child.on('close', (code) => code === 0 ? done({ ok: true }) : (settled ? null : reject(new Error('GitHub sign-in failed; install GitHub CLI and retry'))));
+      setTimeout(() => { if (!settled) { child.kill(); reject(new Error('GitHub login did not respond')); } }, 20000);
+    });
+  }
+  if (action === 'cloneRepo') {
+    const repo = String(args.repo || '').trim().replace(/^https:\/\/github.com\//, '').replace(/\.git$/, '').replace(/\/$/, '');
+    if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo) || repo.split('/').some((s) => s === '.' || s === '..')) throw new Error('Use owner/repo or a GitHub repository URL');
+    const { run, git } = await load('adapters/process.mjs');
+    const dir = path.join(dataDir(), 'repositories', repo.replace('/', '--'));
+    if (await fs.stat(dir).then(() => true, () => false)) return { path: dir };
+    await fs.mkdir(path.dirname(dir), { recursive: true });
+    const result = await run('gh', ['repo', 'clone', repo, dir], { timeout: 120000 }).catch(() => ({ exitCode: 1 }));
+    if (result.exitCode !== 0) await git(path.dirname(dir), ['clone', '--', 'https://github.com/' + repo + '.git', dir]);
+    return { path: dir };
+  }
+  if (action === 'openPullRequest') {
+    const task = coordinator?.s.tasks[args.taskId];
+    if (!task || task.createdBy !== personId || !task.applied?.ok) throw new Error('Accept and apply your task before opening a pull request');
+    mine(task.agentId);
+    const { run, git } = await load('adapters/process.mjs');
+    const dir = path.join(host.dataDir, 'applied', task.id);
+    const remote = (await git(dir, ['remote', 'get-url', 'origin'])).trim();
+    if (!/^(https:\/\/github\.com\/|git@github\.com:)[\w.-]+\/[\w.-]+(?:\.git)?$/.test(remote)) throw new Error('This repository needs a GitHub origin remote');
+    const head = (await git(dir, ['branch', '--show-current'])).trim();
+    if (head !== task.applied.branch || !head.startsWith('larp/accepted-')) throw new Error('Accepted branch has changed');
+    const body = path.join(host.dataDir, 'applied', task.id + '-pr.md');
+    await fs.writeFile(body, `${task.result.summary}\n\nValidation: ${task.result.check ? task.result.check.passed ? 'Passed: ' + task.check : 'Failed: ' + task.check : 'No automated check recorded'}`);
+    await git(dir, ['push', '--set-upstream', 'origin', head]);
+    const created = await run('gh', ['pr', 'create', '--draft', '--title', task.title, '--body-file', body, '--head', head], { cwd: dir, timeout: 30000 });
+    if (created.exitCode !== 0) throw new Error('Branch pushed, but PR creation failed: ' + created.output.slice(-500));
+    const url = created.output.match(/https:\/\/github\.com\/[^\s]+\/pull\/\d+/)?.[0];
+    if (url) await shell.openExternal(url);
+    return { url, pushed: true };
+  }
+  throw new Error('Unknown workspace action');
 }
 
 const { postJson } = require('./space-network.cjs');
@@ -516,7 +608,19 @@ const handlers = {
   },
 
   /** Call a connected app's API from the main process (no CORS, token never reaches the page). */
+  async workspace(args) { return workspaceAction(config.activePersonId, args); },
+  async appSnapshot({ id, action, data, revision, profile = '' }) {
+    if (!appRecords) throw new Error('Host not ready');
+    appRecords.file(id, profile);
+    if ((config.appProfiles[id] || '') !== profile) { config.appProfiles[id] = profile; await saveConfig(); }
+    if (action === 'save') { try { return await appRecords.sync(id, data, revision, profile); } catch { return appRecords.read(id, profile); } }
+    return appRecords.read(id, profile);
+  },
   async appsCall({ id, method = 'GET', path: route, body }) {
+    if (['citylines', 'eduspace', 'studio'].includes(id)) {
+      if (!appRecords) throw new Error('Host not ready');
+      return appRecords.call({ id, method, path: route, body });
+    }
     const app = config.apps?.[id];
     if (!app) throw new Error('That app is not connected');
     if (!/^[\w\-/?=&.%]+$/.test(route) || route.includes('..')) throw new Error('Bad path');
@@ -545,6 +649,10 @@ async function readApps() {
       try { parts.push(`${route}: ${JSON.stringify(await handlers.appsCall({ id: app.id, path: route }))}`); } catch { /* not running right now */ }
     }
     if (parts.length) out.push({ name: app.name, kind: app.kind, text: parts.join('\n').slice(0, 6000) });
+  }
+  if (appRecords) for (const id of ['citylines', 'eduspace', 'studio']) {
+    const snapshot = await appRecords.read(id);
+    if (snapshot.data) out.push({ name: id, kind: 'local app', text: JSON.stringify(snapshot).slice(0, 14000) });
   }
   return out;
 }
@@ -678,7 +786,9 @@ app.whenReady().then(async () => {
     await loadEnv(path.join(__dirname, '..', '.env'));
     await loadEnv(path.join(dataDir(), '.env'));
     setStatus(config.mode === 'host' ? 'starting your space' : config.host ? 'connecting your agents' : 'getting ready');
-    await bringUp();
+    // Wait a moment for the space (a hosted one starts in about a second), never longer: a space that
+    // can't be reached keeps being retried in the background while the window shows what's going on.
+    await Promise.race([bringUp(), new Promise((r) => setTimeout(r, 3000))]);
   } catch (error) {
     console.error('[larp] startup failed:', error.stack || error.message);
   }

@@ -39,7 +39,7 @@ export function AppsPage({ ctx }: { ctx: Ctx }) {
 
   return (
     <div className="page">
-      <PageHeader title="Apps" subtitle="Five apps built into Larp, each opening its full interface here. Their data stays on this computer; agents that may read Swasthya and Kosh say so when you approve them." />
+      <PageHeader title="Apps" subtitle="Five apps built into Larp, each opening its full interface here. Open each app once to connect its local data. Agents with app access can read them and request changes; writes require approval." />
       <div className="apps-grid">
         {(apps || []).map((a) => {
           const about = ABOUT[a.id];

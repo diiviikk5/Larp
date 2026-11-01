@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { StormScene } from './scene';
-import { Cursor, DecodeCycle, Magnetic, RevealWords, ScrambleLink } from './fx';
+import { DecodeCycle, Magnetic, RevealWords, ScrambleLink } from './fx';
+import { RELEASE } from './release';
 const stormUrl = `${import.meta.env.BASE_URL}storm.png`;
 
 function Mark({ size = 18 }: { size?: number }) {
@@ -108,14 +109,12 @@ export function Hero() {
       <header className="nav">
         <a className="nav-brand" href="#top"><Mark /> <span>LARP</span></a>
         <nav className="nav-links" aria-label="Primary">
-          <ScrambleLink href="#download">Download</ScrambleLink>
           <ScrambleLink href="./skills.html">Skills</ScrambleLink>
           <ScrambleLink href="./apps.html">Apps</ScrambleLink>
           <ScrambleLink href="./memory.html">Memory</ScrambleLink>
-          <ScrambleLink href="#docs">Get started</ScrambleLink>
-          <ScrambleLink href="#host">Host a space</ScrambleLink>
+          <ScrambleLink href="https://github.com/diiviikk5/Larp#readme">Get started</ScrambleLink>
         </nav>
-        <Magnetic strength={0.25}><ScrambleLink className="nav-cta" href="#download">Download</ScrambleLink></Magnetic>
+        <Magnetic strength={0.25}><ScrambleLink className="nav-cta" href={RELEASE.windows}>Download</ScrambleLink></Magnetic>
       </header>
 
       <p className="hero-caption"><DecodeCycle phrases={['PEOPLE. AGENTS. PROOF.', 'DELEGATE. APPROVE. VERIFY.', 'LOCAL. PRIVATE. YOURS.']} /></p>
@@ -128,17 +127,16 @@ export function Hero() {
           <span className="hero-index">N°01</span>
           <p><RevealWords text="A harness where your agents and your people’s agents work together. Each one runs on its owner’s machine, asks before it acts, and comes back with proof." delay={1.3} /></p>
           <div className="hero-actions">
-            <Magnetic><a className="btn-solid" href="#download"><span>Download for Windows</span></a></Magnetic>
-            <Magnetic><a className="btn-line" href="#docs">Get started <span aria-hidden="true">→</span></a></Magnetic>
+            <Magnetic><a className="btn-solid" href={RELEASE.windows} download><span>Download for Windows</span></a></Magnetic>
+            <Magnetic><a className="btn-line" href="https://github.com/diiviikk5/Larp#readme">Get started <span aria-hidden="true">→</span></a></Magnetic>
           </div>
-          <small>v0.4 · Free · macOS and Linux soon</small>
+          <small>v{RELEASE.version} · Free · Windows installer, {RELEASE.windowsSize} · macOS and Linux soon</small>
         </div>
         <div className="hero-meta">
           <span className="hero-hint">Move to steer the storm — click to strike</span>
           <span className="hero-readout"><i className="live" />LIVE · <span ref={readout}>T+00:00:00  ·  STRIKES 000</span></span>
         </div>
       </div>
-      <Cursor />
     </section>
   );
 }

@@ -8,13 +8,15 @@ import '../skills/skills.css';
 import './apps.css';
 import { APPS, BUILT_IN, type App } from './apps';
 
+// Apps hosted on this site (a demo copy of the ones built into Larp) open at their index page.
+const open = (a: App) => (a.url.startsWith('/') ? `${a.url}/index.html` : a.url);
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const featured = document.getElementById('featured')!;
 const sheet = document.getElementById('sheet') as HTMLDialogElement;
 
 featured.innerHTML = APPS.map((a, i) => `
   <article class="app" data-id="${a.id}" style="--accent:${a.accent}">
-    <a class="app-window" href="${a.url}" target="_blank" rel="noopener" aria-label="Open ${esc(a.name)}">
+    <a class="app-window" href="${open(a)}" target="_blank" rel="noopener" aria-label="Open ${esc(a.name)}">
       <div class="app-bar">
         <span class="dots"><i></i><i></i><i></i></span>
         <span class="app-url">${esc(a.url.replace(/^https?:\/\//, ''))}</span>
@@ -37,7 +39,7 @@ featured.innerHTML = APPS.map((a, i) => `
       <p class="app-desc">${esc(a.description)}</p>
       <ul class="app-tags">${a.features.map((f) => `<li>${esc(f)}</li>`).join('')}</ul>
       <div class="app-actions">
-        <a class="btn-ink" href="${a.url}" target="_blank" rel="noopener">Open app ↗</a>
+        <a class="btn-ink" href="${open(a)}" target="_blank" rel="noopener">Open app ↗</a>
         <button class="btn-line" data-run="${a.id}">How to run</button>
         ${a.source ? `<a class="btn-line" href="${a.source}" target="_blank" rel="noopener">Source ↗</a>` : ''}
         <span class="app-ep">${a.endpoints} Larp endpoints</span>
@@ -78,11 +80,11 @@ for (const a of APPS) {
     state.querySelector('em')!.textContent = up ? 'running here' : 'runs on your computer';
     if (!up) {
       // Not running: clicking explains how to start it instead of opening a dead tab.
-      card.querySelectorAll<HTMLAnchorElement>(`a[href="${a.url}"]`).forEach((l) => l.addEventListener('click', (e) => { e.preventDefault(); showRun(a); }));
+      card.querySelectorAll<HTMLAnchorElement>(`a[href="${open(a)}"]`).forEach((l) => l.addEventListener('click', (e) => { e.preventDefault(); showRun(a); }));
       return;
     }
     const live = card.querySelector<HTMLElement>('.live')!;
-    live.innerHTML = `<iframe src="${a.url}/" title="${esc(a.name)}, live" loading="lazy" tabindex="-1"></iframe>`;
+    live.innerHTML = `<iframe src="${open(a)}" title="${esc(a.name)}, live" loading="lazy" tabindex="-1"></iframe>`;
     live.hidden = false;
     const iframe = live.querySelector('iframe')!;
     iframe.addEventListener('load', () => card.classList.add('is-live'));
@@ -102,7 +104,7 @@ function showRun(a: App) {
     <p class="sheet-desc">${esc(a.name)} keeps its data on the computer it runs on, so there's nothing to sign up for. Start it from the folder that holds it, then open it at <b>${esc(a.url.replace('http://', ''))}</b>.</p>
     <div class="cmd"><code>${esc(a.run)}</code><button class="copy">Copy</button></div>
     <div class="sheet-fit"><span>With Larp</span>Open ${esc(a.name)} → Connect to Larp, and paste its address and token into Larp. Larp's agents can then use its ${a.endpoints} endpoints, and still ask before sharing anything.</div>
-    <div class="sheet-links"><a href="${a.url}" target="_blank" rel="noopener">Open ${esc(a.name)} ↗</a>${a.source ? `<a href="${a.source}" target="_blank" rel="noopener">Source ↗</a>` : ''}</div>`;
+    <div class="sheet-links"><a href="${open(a)}" target="_blank" rel="noopener">Open ${esc(a.name)} ↗</a>${a.source ? `<a href="${a.source}" target="_blank" rel="noopener">Source ↗</a>` : ''}</div>`;
   sheet.showModal();
   sheet.querySelector('.sheet-x')!.addEventListener('click', () => sheet.close());
   const copy = sheet.querySelector('.copy') as HTMLButtonElement;
