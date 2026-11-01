@@ -27,7 +27,7 @@ The message the host sends has everything:
 2. Runtime: **Codex**.
 3. Codex sign-in: **This computer's Codex login**, or **Larp's own Codex profile** to use a different ChatGPT account just for Larp (for example a Plus plan). Larp shows whether Codex is installed and signed in:
    - Not installed: install Node.js (nodejs.org), run `npm install -g @openai/codex@latest`, then press **Check again**. Use a current Codex: older versions reject today's models. It needs about 500 MB of free disk space.
-   - Not signed in: press **Sign in…**, log in with your ChatGPT account in the window that opens, then press **Check again**.
+   - Not signed in: press **Sign in with ChatGPT**. Your browser opens ChatGPT's sign-in page: sign in with Google, Apple, Microsoft or email, using the account this agent should use. Larp notices when you're done; no terminal needed.
 4. Model: leave empty to use your plan's default model, or type the exact name Codex shows in its `/model` list.
 5. Repository (optional, only for code): pick **Use the demo project** to try Larp together, or your own git repo. Larp recognises everyone's copies of one repo by its first commit, whatever the folders are called. Every task gets its own branch and worktree. Home spaces don't show this step.
 6. **Can read my apps** (optional): before each task, the agent gets a summary from your connected Swasthya and Kosh, read on your PC.
@@ -44,7 +44,7 @@ The host's PC runs the space, so it has to stay on with Larp open while you work
 |---|---|
 | A friend can't connect | The host's Settings → Network → "Allow other devices" is on; both PCs are on the same Wi-Fi or Tailscale network; Windows Firewall allows Larp. |
 | "That invite code is invalid or expired" | Codes work once and expire. Create a new invite. |
-| "Codex isn't signed in" | Agent settings → Codex sign-in → Sign in…, then Check again. |
+| "Codex isn't signed in" | Agent settings → Codex sign-in → **Sign in with ChatGPT**, and finish in the browser. If no browser tab opened, press **Open the sign-in page again**. |
 | "Codex rejected the model for your ChatGPT plan" or "requires a newer version of Codex" | Update Codex: `npm install -g @openai/codex@latest` (about 500 MB free space needed). If Codex lives somewhere else, set `LARP_CODEX` in Larp's `.env` to its full path. |
 | Memory page says memory is off | Larp Cloud was switched off on the host (`LARP_CLOUD=off`) and it has no Meko key of its own. |
 | A task says Meko couldn't be reached | The host was offline or Larp Cloud didn't answer; the agent ran without memory. The next task tries again. |

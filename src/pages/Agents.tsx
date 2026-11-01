@@ -148,17 +148,25 @@ export function AgentDetail({ ctx, id }: { ctx: Ctx; id: string }) {
  * sign-in, for example another ChatGPT plan, kept in Larp's data folder so ~/.codex is never touched).
  */
 function CodexSignIn({ own, setOwn }: { own: boolean; setOwn: (on: boolean) => void }) {
-  const [status, setStatus] = useState<{ installed: boolean; signedIn: boolean; detail: string; command: string } | null>(null);
+  const [status, setStatus] = useState<{ installed: boolean; signedIn: boolean; pending?: boolean; url?: string | null; detail: string; command: string } | null>(null);
   const action = useAction();
   // Only the answer for the option shown counts: switching options can leave an older check still running.
   const current = useRef(own);
   current.current = own;
-  const check = () => action.run(async () => {
+  const ask = async (what: 'status' | 'login' | 'open' | 'cancel') => {
     const asked = own;
-    const result = await window.larp!.codexProfile!({ action: 'status', own: asked });
+    const result = await window.larp!.codexProfile!({ action: what, own: asked });
     if (current.current === asked) setStatus(result);
-  });
+    return result;
+  };
+  const check = () => action.run(() => ask('status'));
   useEffect(() => { setStatus(null); if (window.larp?.codexProfile) check(); }, [own]);
+  // While the browser sign-in is open, notice by itself when it's done.
+  useEffect(() => {
+    if (!status?.pending) return;
+    const timer = setInterval(() => { ask('status').catch(() => {}); }, 3000);
+    return () => clearInterval(timer);
+  }, [status?.pending, own]);
   return (
     <Field label="Codex sign-in" hint="Which ChatGPT account this agent's Codex uses. Larp's own profile is a separate sign-in that leaves your usual Codex login alone.">
       <div className="segmented">
@@ -166,15 +174,19 @@ function CodexSignIn({ own, setOwn }: { own: boolean; setOwn: (on: boolean) => v
         <button aria-pressed={own} onClick={() => setOwn(true)}>Larp's own Codex profile</button>
       </div>
       <div className="codex-profile">
-        <p className={'runtime-detail ' + (status?.signedIn ? 'ok' : 'missing')}>{!status ? 'Checking…' : status.signedIn ? status.detail : !status.installed ? status.detail : 'Not signed in yet'}</p>
+        <p className={'runtime-detail ' + (status?.signedIn ? 'ok' : 'missing')}>{!status ? 'Checking…' : status.signedIn ? status.detail : !status.installed ? status.detail : status.pending ? 'Waiting for you to sign in in your browser…' : 'Not signed in yet'}</p>
         {status && !status.installed ? (
           <p className="field-hint">Install it once (needs Node.js from nodejs.org), then press Check again: <code className="mono">npm install -g @openai/codex</code></p>
+        ) : status?.pending ? (
+          <p className="field-hint">Your browser opened the ChatGPT sign-in page. Sign in with Google, Apple, Microsoft or your email, using the account this agent should use. Larp notices when you're done.</p>
         ) : status && !status.signedIn && (
-          <p className="field-hint">Press Sign in and log in with the ChatGPT account you want in the window that opens. If no window opens, run <code className="mono">{status.command}</code> in a terminal.</p>
+          <p className="field-hint">Sign in with your ChatGPT account (Plus or Pro) in your browser. No terminal needed.</p>
         )}
         <div className="row">
-          {status?.installed !== false && !status?.signedIn && <button className="btn btn-sm" disabled={action.busy} onClick={() => action.run(async () => setStatus(await window.larp!.codexProfile!({ action: 'login', own })))}>Sign in…</button>}
-          <button className="btn btn-ghost btn-sm" disabled={action.busy} onClick={check}>Check again</button>
+          {status?.installed !== false && !status?.signedIn && !status?.pending && <button className="btn btn-primary btn-sm codex-signin" disabled={action.busy} onClick={() => action.run(() => ask('login'))}>Sign in with ChatGPT</button>}
+          {status?.pending && <button className="btn btn-sm" disabled={action.busy} onClick={() => action.run(() => ask('open'))}>Open the sign-in page again</button>}
+          {status?.pending && <button className="btn btn-ghost btn-sm" disabled={action.busy} onClick={() => action.run(() => ask('cancel'))}>Cancel</button>}
+          {!status?.pending && <button className="btn btn-ghost btn-sm" disabled={action.busy} onClick={check}>Check again</button>}
         </div>
         <ErrorText error={action.error} />
       </div>

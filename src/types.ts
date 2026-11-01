@@ -133,7 +133,7 @@ declare global {
       setSplash(args: { enabled: boolean }): Promise<DeviceConfig>;
       setTitleBar?(args: { color: string; symbol: string }): Promise<unknown>;
       detectRuntimes?(): Promise<Record<string, RuntimeStatus>>;
-      codexProfile?(args: { action: 'status' | 'login'; own?: boolean }): Promise<{ dir: string | null; command: string; installed: boolean; signedIn: boolean; detail: string }>;
+      codexProfile?(args: { action: 'status' | 'login' | 'open' | 'cancel'; own?: boolean }): Promise<{ dir: string | null; command: string; installed: boolean; signedIn: boolean; pending?: boolean; url?: string | null; detail: string }>;
       openExternal(args: { url: string }): Promise<unknown>;
       appsList?(): Promise<ConnectedApp[]>;
       appsConnect?(args: { id: string; url?: string }): Promise<ConnectedApp[]>;
