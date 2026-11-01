@@ -51,7 +51,7 @@ export class Meko {
     if (this.client) return this.client;
     if (this.connecting) return this.connecting;
     this.connecting = (async () => {
-      const client = new Client({ name: 'larp', version: '0.6.5' });
+      const client = new Client({ name: 'larp', version: '0.6.6' });
       const transport = new StreamableHTTPClientTransport(new URL(this.url), {
         requestInit: { headers: { Authorization: `Bearer ${this.apiKey}` } },
       });

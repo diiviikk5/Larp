@@ -41,14 +41,16 @@ export class Store {
 
   async load() {
     await fs.mkdir(this.dir, { recursive: true });
-    let saved = this.db ? await this.db.loadState() : null;
-    // The database copy can be behind this computer's (saves that never reached it): keep the newer one.
+    // This computer's own copy always wins. The database copy is only for a coordinator with no local
+    // state yet (a new machine, a hosted server's fresh disk): a shared database row can hold another
+    // coordinator's state, and loading it would sign everyone here out.
+    let saved = null;
     try {
-      const local = JSON.parse(await fs.readFile(path.join(this.dir, 'state.json'), 'utf8'));
-      if (!saved || (local.version || 0) > (saved.version || 0)) saved = local;
+      saved = JSON.parse(await fs.readFile(path.join(this.dir, 'state.json'), 'utf8'));
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
     }
+    if (!saved && this.db) saved = await this.db.loadState();
     if (saved) this.state = { ...emptyState(), ...saved };
     // Work that was running when the coordinator stopped cannot still be running.
     for (const task of Object.values(this.state.tasks)) {

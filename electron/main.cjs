@@ -119,6 +119,18 @@ async function leaveCurrent() {
   if (coordinator) { await coordinator.close(); coordinator = null; }
 }
 
+// The Codex sign-in running in the background, if any (one at a time: it serves localhost:1455).
+let codexLogin = null;
+function stopCodexLogin() {
+  const entry = codexLogin;
+  codexLogin = null;
+  if (!entry) return;
+  clearTimeout(entry.timer);
+  if (entry.done) return;
+  if (process.platform === 'win32') require('node:child_process').execFile('taskkill', ['/PID', String(entry.proc.pid), '/T', '/F'], { windowsHide: true }, () => {});
+  else entry.proc.kill();
+}
+
 function person(id) {
   const found = config.people.find((p) => p.id === id);
   if (!found) throw new Error('That person is not signed in on this device');
@@ -251,18 +263,51 @@ const handlers = {
     const win = process.platform === 'win32';
     const bin = codexBin();
     const command = !dir ? `${bin} login` : win ? `set CODEX_HOME=${dir} && ${bin} login` : `CODEX_HOME='${dir}' ${bin} login`;
+    const login = codexLogin && codexLogin.dir === dir ? codexLogin : null;
     if (action === 'login') {
-      const title = dir ? 'Codex sign-in for Larp' : 'Codex sign-in';
-      if (win) spawn('cmd.exe', ['/c', 'start', title, 'cmd', '/k', `${codexBin()} login`], { env, detached: true, windowsHide: false }).unref();
-      else if (process.platform === 'darwin') spawn('osascript', ['-e', `tell application "Terminal" to do script ${JSON.stringify(command)}`], { detached: true }).unref();
-      return { dir, command, installed: true, signedIn: false, detail: 'Finish signing in in the window that opened, then check again.' };
+      // Codex's own ChatGPT sign-in runs in the background (no terminal window): it serves the OAuth
+      // callback on localhost and opens the ChatGPT sign-in page (Google, Apple, Microsoft or email) in
+      // the browser. Larp keeps the link, in case the browser didn't open, and notices when it's done.
+      stopCodexLogin();
+      const proc = spawn(win ? `"${bin}"` : bin, ['login'], { env, windowsHide: true, shell: win });
+      const entry = { proc, dir, url: null, done: false, output: '' };
+      codexLogin = entry;
+      const read = (data) => {
+        entry.output = (entry.output + data).slice(-4000);
+        const found = entry.output.match(/https:\/\/auth\.openai\.com\/\S+/);
+        if (found && !entry.url) { entry.url = found[0]; notify(); }
+      };
+      proc.stdout.on('data', read);
+      proc.stderr.on('data', read);
+      proc.on('error', (error) => { entry.done = true; entry.error = error.message; });
+      proc.on('exit', (code) => { entry.done = true; entry.code = code; notify(); });
+      entry.timer = setTimeout(() => { if (codexLogin === entry) stopCodexLogin(); }, 10 * 60_000);
+      for (let i = 0; i < 50 && !entry.url && !entry.done; i++) await new Promise((r) => setTimeout(r, 200));
+      if (!entry.url) {
+        const missing = /not recognized|ENOENT|not found/i.test(`${entry.output} ${entry.error || ''}`);
+        const why = missing ? 'Codex isn’t installed on this computer' : entry.output.trim().split('\n').pop() || 'Codex didn’t start its sign-in';
+        stopCodexLogin();
+        return { dir, command, installed: !missing, signedIn: false, pending: false, detail: why };
+      }
+      return { dir, command, installed: true, signedIn: false, pending: true, url: entry.url, detail: 'Waiting for you to sign in in your browser' };
+    }
+    if (action === 'open') {
+      if (!login?.url || login.done) throw new Error('Start signing in again');
+      await shell.openExternal(login.url);
+      return { dir, command, installed: true, signedIn: false, pending: true, url: login.url, detail: 'Waiting for you to sign in in your browser' };
+    }
+    if (action === 'cancel') {
+      if (login) stopCodexLogin();
+      return { dir, command, installed: true, signedIn: false, pending: false, detail: 'Not signed in' };
     }
     const result = await new Promise((resolve) => {
-      execFile(codexBin(), ['login', 'status'], { env, timeout: 8000, windowsHide: true, shell: win }, (error, stdout, stderr) => resolve({ error, out: `${stdout}${stderr}`.trim() }));
+      execFile(win ? `"${bin}"` : bin, ['login', 'status'], { env, timeout: 8000, windowsHide: true, shell: win }, (error, stdout, stderr) => resolve({ error, out: `${stdout}${stderr}`.trim() }));
     });
     const installed = !/not recognized|ENOENT|not found/i.test(`${result.out} ${result.error?.message || ''}`);
     const signedIn = /logged in/i.test(result.out) && !/not logged in/i.test(result.out);
-    return { dir, command, installed, signedIn, detail: installed ? result.out.split('\n').find((l) => l.trim()) || 'Not signed in' : 'Codex isn’t installed on this computer' };
+    if (signedIn && login) stopCodexLogin();
+    const pending = Boolean(!signedIn && login && !login.done);
+    return { dir, command, installed, signedIn, pending, url: pending ? login.url : null, detail: installed ? result.out.split('\n').find((l) => l.trim()) || 'Not signed in' : 'Codex isn’t installed on this computer' };
   },
 
   async removeAgent({ agentId }) {
@@ -606,6 +651,7 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => app.quit());
 app.on('will-quit', () => {
+  stopCodexLogin();
   globalShortcut.unregisterAll();
   for (const server of builtinApps) server.close();
   host?.stop();
