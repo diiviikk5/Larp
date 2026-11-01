@@ -168,12 +168,16 @@ export class Yugabyte {
   }
 }
 
-/** Connect when YUGABYTE_URL is set; otherwise Larp keeps everything in local files. */
+/**
+ * Connect when YUGABYTE_URL is set; otherwise Larp keeps everything in local files.
+ * LARP_STATE_ID names this coordinator's own state row (a hosted space must set one, so it never
+ * shares the default row with anything else).
+ */
 export async function connectFromEnv() {
   const url = process.env.YUGABYTE_URL;
   if (!url) return null;
   try {
-    return await Yugabyte.connect(url);
+    return await Yugabyte.connect(url, 5, { team: process.env.LARP_STATE_ID || null });
   } catch (error) {
     console.error(`[larp] could not reach YugabyteDB at ${url.replace(/\/\/[^@]*@/, '//***@')}: ${error.message}. Using local files.`);
     return null;

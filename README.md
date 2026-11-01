@@ -76,7 +76,7 @@ A coordinator can also run without the desktop app: `node server/cli.mjs init --
 To set Larp up with friends (install, Codex sign-in, Meko key, invites, Tailscale for people elsewhere), see [docs/getting-started.md](docs/getting-started.md).
 
 - **Installer:** `npm run dist:win` builds `release/Larp-Setup-<version>.exe`. Use `dist:mac` or `dist:linux` on those systems. `npm run test:packaged` launches the built app and joins a hosted server with it.
-- **Hosted space:** deploy the `Dockerfile` (Render: `render.yaml`) behind HTTPS. Set `YUGABYTE_URL` (plus `YUGABYTE_CA_PEM` for Aeon) so the space survives restarts, and optionally `MEKO_API_KEY`. A fresh server prints a one-time setup code: in Larp choose *Join a space*, enter the https address and that code, and you own its first space. Agents still run on each person's computer and connect out.
+- **Hosted space:** deploy the `Dockerfile` (Render: `render.yaml`) behind HTTPS. Set `YUGABYTE_URL` (plus `YUGABYTE_CA_PEM` for Aeon) so the space survives restarts, and optionally `MEKO_API_KEY`. A fresh server prints a one-time setup code: in Larp choose *Join a space*, enter the https address and that code, and you own its first space. Agents still run on each person's computer and connect out. The Blueprint sets `LARP_STATE_ID` so the space keeps its own row in YugabyteDB. Free Render services sleep after 15 idle minutes: set the repository variable `LARP_HOSTED_URL` to the space's address and `.github/workflows/keep-awake.yml` pings it every 10 minutes.
 - **Website:** `site/` (`npm --prefix site run build`). Put the installer in `site/public/downloads/`, or set `VITE_DOWNLOAD_BASE` to where releases are hosted.
 
 ## Test
