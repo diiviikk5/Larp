@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity as ActivityIcon, Bell, Blocks, Brain, Bot, CalendarDays, Check, ChevronDown, HeartHandshake, LayoutGrid, ListChecks,
-  Plus, Search, Settings as SettingsIcon, Users, Wallet,
+  Globe, Home, LogIn, Plus, Search, Settings as SettingsIcon, Users, Wallet,
 } from 'lucide-react';
 import type { Larp } from './api';
 import type { DeviceConfig, Space, State } from './types';
 import type { Ctx, Route } from './route';
 import { Avatar, Kbd, LogoMark, STATUS_LABEL, timeAgo, useAction, useTick } from './ui';
 import type { Task } from './types';
-import { notify, toast } from './feedback';
+import { confirmDialog, notify, toast } from './feedback';
+import { parseInvite } from './invite';
 import { Overview } from './pages/Overview';
 import { Tasks } from './pages/Tasks';
 import { TaskDetail } from './pages/TaskDetail';
@@ -132,7 +133,7 @@ export function Shell({ larp, state, device, setDevice, reloadDevice, phone }: {
       {!phone && (
         <aside className="sidebar">
           <div className="drag-strip" />
-          <SpaceSwitcher larp={api} state={state} space={space} onSwitch={switchSpace} onSettings={() => go({ page: 'settings' })} />
+          <SpaceSwitcher larp={api} state={state} space={space} onSwitch={switchSpace} onSettings={() => go({ page: 'settings' })} device={device} setDevice={setDevice} />
           <button className="btn btn-primary new-task-btn" onClick={() => setNewTask({})}><Plus size={15} /> New task <span className="grow" /><Kbd>Ctrl N</Kbd></button>
           <nav className="nav">
             {nav.map((item) => (
@@ -215,8 +216,16 @@ function TabButton({ active, onClick, icon, label }: { active: boolean; onClick:
   return <button className={'tab' + (active ? ' active' : '')} onClick={onClick}>{icon}<span>{label}</span></button>;
 }
 
-function SpaceSwitcher({ larp, state, space, onSwitch, compact, onSettings }: { larp: Larp; state: State; space: Space; onSwitch: (s: Space) => void; compact?: boolean; onSettings: () => void }) {
+function SpaceSwitcher({ larp, state, space, onSwitch, compact, onSettings, device, setDevice }: { larp: Larp; state: State; space: Space; onSwitch: (s: Space) => void; compact?: boolean; onSettings: () => void; device?: DeviceConfig | null; setDevice?: (d: DeviceConfig) => void }) {
   const [open, setOpen] = useState(false);
+  const action = useAction();
+  // What this device is in now, as it will be listed under "On other computers" after moving.
+  const here = state.spaces.map((s) => s.name).join(', ') + (device?.mode === 'host' ? ' (this computer)' : '');
+  const pauses = async () => device?.mode !== 'host' || confirmDialog({
+    title: 'Pause your space?',
+    body: `This computer hosts ${state.spaces.map((s) => s.name).join(', ')}. While you're in the other space, people in yours can't reach it. Switch back any time from this menu.`,
+    confirmLabel: 'Continue',
+  });
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const close = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
@@ -241,8 +250,25 @@ function SpaceSwitcher({ larp, state, space, onSwitch, compact, onSettings }: { 
               {s.id === space.id && <Check size={14} />}
             </button>
           ))}
+          {window.larp && setDevice && !!device?.others?.length && (
+            <>
+              <div className="dropdown-sep" />
+              <div className="dropdown-label">On other computers</div>
+              {device.others.map((o, index) => (
+                <button key={`${o.url}-${index}`} role="menuitem" className="dropdown-item" disabled={action.busy} onClick={async () => {
+                  if (!(await pauses())) return;
+                  action.run(async () => { setDevice(await window.larp!.switchDevice({ index, label: here })); setOpen(false); toast(`Switched to ${o.label}`); });
+                }}>
+                  <span className="space-kind">{o.mode === 'host' ? <Home size={11} /> : <Globe size={11} />}</span>
+                  <span className="grow">{o.label}</span>
+                </button>
+              ))}
+              {action.error && <p className="error-text">{action.error}</p>}
+            </>
+          )}
           <div className="dropdown-sep" />
           <NewSpaceItem larp={larp} onCreated={(s) => { onSwitch(s); setOpen(false); }} />
+          {window.larp && setDevice && <JoinSpaceItem name={state.me.name} here={here} pauses={pauses} onJoined={(d) => { setDevice(d); setOpen(false); toast('Joined the space'); }} />}
           <button role="menuitem" className="dropdown-item" onClick={() => { setOpen(false); onSettings(); }}><SettingsIcon size={14} /> Settings</button>
         </div>
       )}
@@ -264,6 +290,28 @@ function NewSpaceItem({ larp, onCreated }: { larp: Larp; onCreated: (s: Space) =
         <button aria-pressed={kind === 'home'} onClick={() => setKind('home')}>Home</button>
       </div>
       <button className="btn btn-primary btn-sm" disabled={!name.trim() || action.busy} onClick={() => action.run(async () => onCreated(await larp.act('POST', 'spaces', { name, kind })))}>Create space</button>
+      {action.error && <p className="error-text">{action.error}</p>}
+    </div>
+  );
+}
+
+/** Join a space on another computer with an invite, from inside the app. */
+function JoinSpaceItem({ name: myName, here, pauses, onJoined }: { name: string; here: string; pauses: () => Promise<boolean>; onJoined: (d: DeviceConfig) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [invite, setInvite] = useState('');
+  const [name, setName] = useState(myName);
+  const action = useAction();
+  const parsed = parseInvite(invite);
+  if (!editing) return <button role="menuitem" className="dropdown-item" onClick={() => setEditing(true)}><LogIn size={14} /> Join another space</button>;
+  return (
+    <div className="dropdown-form">
+      <textarea autoFocus className="mono invite-paste" rows={2} placeholder="Paste the invite (larp://join?at=…&code=…)" value={invite} onChange={(e) => setInvite(e.target.value)} aria-label="Invite" />
+      <input placeholder="Your name there" value={name} onChange={(e) => setName(e.target.value)} aria-label="Your name" />
+      {invite.trim() && !parsed && <p className="faint small">That doesn't look like an invite. Ask for a new one: People → Create invite code → Copy message.</p>}
+      <button className="btn btn-primary btn-sm" disabled={!parsed || !name.trim() || action.busy} onClick={async () => {
+        if (!parsed || !(await pauses())) return;
+        action.run(async () => onJoined(await window.larp!.joinAnother({ ...parsed, name: name.trim(), label: here })));
+      }}>{action.busy ? 'Joining…' : 'Join space'}</button>
       {action.error && <p className="error-text">{action.error}</p>}
     </div>
   );

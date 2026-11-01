@@ -112,7 +112,7 @@ export function MemoryPage({ ctx }: { ctx: Ctx }) {
         </section>
         <section className="card">
           <h3>Each agent's memory</h3>
-          <p className="faint small">One Meko datapack per agent: it persists across days and machines, and other agents can leave notes in it.</p>
+          <p className="faint small">Each agent has its own memory in Meko: it persists across days and machines, and other agents can leave notes in it.</p>
           <ul className="agent-packs">
             {agents.map((a) => {
               const mine = calls.filter((c) => c.agentId === a.id);

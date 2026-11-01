@@ -104,6 +104,7 @@ npm run test:hosted    # a server started like the Dockerfile; two laptops join 
 npm run test:memory    # memory across days, agent hand-offs, lessons; memory on vs off (stand-in Meko server)
 npm run test:sql       # the same, storing to a Postgres-wire database (YugabyteDB speaks YSQL)
 npm run test:cloud     # Larp Cloud: two teams through the real site/api handlers, kept apart; database per team
+npm run test:join      # two app installs: join another space from the space menu, then switch back
 npm run meko:check     # live connection to Meko with your key
 npm run detect         # what agent runtimes this computer can run
 npm run test:agents -- claude codex hermes   # one real task per runtime, using your own sign-ins

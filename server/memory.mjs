@@ -14,7 +14,7 @@
 
 const slug = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'x';
 const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
-const PENDING_LIMIT_MS = 20_000;
+const PENDING_LIMIT_MS = 60_000; // recall through Larp Cloud can take 10-20 s; a failed recall releases the task at once
 const HANDOFF_TTL_DAYS = 7;
 const TEAM_PACK = 'team'; // <LARP_TEAM>-team: the one datapack holding the team's memory
 const SUGGEST_AFTER_REUSES = 2;
@@ -111,6 +111,26 @@ export class Memory {
         const lesson = mine.find((l) => l.memoryId === h.id) || mine.find((l) => similar(l.text, h.text) >= 0.15);
         return lesson ? { ...h, text: lesson.text, lessonId: lesson.id } : h;
       });
+      // The skills and apps libraries are searched alongside the memory searches, not after them.
+      const libraries = Promise.all(LIBRARIES.map(async (lib) => {
+        // Libraries are extras: if one can't be reached, the agent still gets its memory and lessons.
+        let found;
+        try {
+          if (!(await this.meko.find(lib.pack, agent.name))) return [];
+          // knowledgebase_search, not context_search: context_search's fixed cutoff drops most catalog matches.
+          found = await this.meko.knowledge({ agent: agent.name, datapack: lib.pack, query, limit: 3, meta: this.meta(task, { summary: `${lib.pack} library: ${task.title}` }) });
+        } catch (error) {
+          console.error(`[larp memory] ${lib.pack} library skipped:`, error.message);
+          return [];
+        }
+        // The same section can exist twice while an old copy of a document is still uploaded: keep the fuller one.
+        const best = new Map();
+        for (const h of found) {
+          const key = h.text.split('\n')[0];
+          if (h.text && relevant(h) && (!best.has(key) || h.text.length > best.get(key).text.length)) best.set(key, h);
+        }
+        return [...best.values()].slice(0, 2).map((h) => ({ id: h.id, text: h.text, score: h.distance === null ? null : 1 - h.distance, source: lib.source, from: lib.from, datapack: this.meko.name(lib.pack) }));
+      }));
       const [own, shared] = await Promise.all([
         this.meko.search({ agent: agent.name, key: this.memKey(agent), datapack: this.spacePack(space), query, limit: 8, meta: this.meta(task) }),
         this.meko.search({ agent: agent.name, key: this.spaceKey(space), datapack: this.spacePack(space), query, source: 'auto', meta: this.meta(task, { space: true, summary: `space knowledge: ${task.title}` }) }),
@@ -137,27 +157,7 @@ export class Memory {
         }
       }
       for (const item of items) item.datapack ||= this.spacePack(space);
-      const library = [];
-      for (const lib of LIBRARIES) {
-        // Libraries are extras: if one can't be reached, the agent still gets its memory and lessons.
-        let found;
-        try {
-          if (!(await this.meko.find(lib.pack, agent.name))) continue;
-          // knowledgebase_search, not context_search: context_search's fixed cutoff drops most catalog matches.
-          found = await this.meko.knowledge({ agent: agent.name, datapack: lib.pack, query, limit: 3, meta: this.meta(task, { summary: `${lib.pack} library: ${task.title}` }) });
-        } catch (error) {
-          console.error(`[larp memory] ${lib.pack} library skipped:`, error.message);
-          continue;
-        }
-        // The same section can exist twice while an old copy of a document is still uploaded: keep the fuller one.
-        const best = new Map();
-        for (const h of found) {
-          const key = h.text.split('\n')[0];
-          if (h.text && relevant(h) && (!best.has(key) || h.text.length > best.get(key).text.length)) best.set(key, h);
-        }
-        const fresh = [...best.values()];
-        for (const h of fresh.slice(0, 2)) library.push({ id: h.id, text: h.text, score: h.distance === null ? null : 1 - h.distance, source: lib.source, from: lib.from, datapack: this.meko.name(lib.pack) });
-      }
+      const library = (await libraries).flat();
       task.context = { status: 'ready', items: [...items.slice(0, 10), ...library], at: new Date().toISOString(), saved, quality: qualities.includes('high') ? 'high' : qualities[0] || null };
     }, (error) => {
       // Memory couldn't be reached: let the agent start now rather than hold the task.
