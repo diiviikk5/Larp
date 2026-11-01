@@ -359,7 +359,7 @@ export class Coordinator {
           `From ${this.s.people[personId]?.name}.`,
           agent.repo ? `Works in an isolated git worktree of ${agent.repo}.` : 'Works in an isolated folder.',
           task.check ? `Then runs this check on your machine: ${task.check}` : 'No check command.',
-          agent.usesApps ? `${agent.name} can read your connected apps (Swasthya, Kosh) to do this; what it finds goes into its answer.` : '',
+          agent.usesApps ? `${agent.name} can request connected apps for this task; each read or write asks for separate approval.` : '',
         ].filter(Boolean).join(' '),
       });
     } else {

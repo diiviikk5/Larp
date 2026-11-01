@@ -94,7 +94,7 @@ export type State = {
 };
 
 export type LocalAgent = {
-  skills?: string[]; runtime: string; model: string | null; repoPath: string | null; baseUrl: string | null; apiKeyEnv: string | null; codexHome?: string | null; useApps?: boolean;
+  executionMode?: 'workspace' | 'full-access'; skills?: string[]; runtime: string; model: string | null; repoPath: string | null; baseUrl: string | null; apiKeyEnv: string | null; codexHome?: string | null; useApps?: boolean;
   private: { calendar: { day: string; title: string; from: string; to: string }[]; availability: Record<string, { from: string; to: string }[]>; budget: number | null };
   sharing: Record<string, 'auto' | 'ask' | 'never'>;
 };

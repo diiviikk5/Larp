@@ -45,3 +45,14 @@ Workspace displays recent successful Meko recall/write counts and whether persis
 Automated suites: node test/workspace.mjs (deterministic model stand-in), node test/workspace-ui.mjs (Electron, real upstream skill install, Studio sync and paired phone), node test/telegram.mjs, node test/agents-talk.mjs. Opt-in real account check: node test/workspace-live.mjs uses the current Codex subscription for a short lead/reviewer exchange with a real upstream skill. It does not publish changes.
 
 Not verified by automated local tests: a real Telegram bot round-trip, a paid OpenAI API request with the user's key, and GitHub push/PR creation. These need the corresponding connected accounts. No release has been deployed by this local change.
+
+
+## Task-scoped tools and execution
+
+Enabling app access makes app requests available; it does not load any app records at task startup. An agent requests a specific app and route when needed. The owner approves each read and write before the host calls that app. The result is written into that task's app-result file and the agent resumes. A denial does not read the app.
+
+A task with an attached Git repository uses its own worktree. Without a repository, it receives a task output folder; it does not receive a copy of the user's projects. The trace shows the actual workspace and runtime mode. The agent should ask for a missing repository instead of searching unrelated files.
+
+Codex defaults to workspace-write. Agent Configuration offers full computer access, which asks the owner before each turn starts. Full access can read and change files outside the task folder; it is not a computer-use tool. Larp does not currently supply screenshot, mouse, or keyboard control. Other runtimes keep their own existing tool restrictions.
+
+Validation: test/workspace.mjs proves unrelated tasks do not preload apps, denied reads make no app call, approved reads resume, and writes require approval. test/task-arrival.mjs delays state after task creation and checks the UI recovers without a hook-order error.

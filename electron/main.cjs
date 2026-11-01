@@ -139,7 +139,7 @@ async function startHost() {
   if (!config.host?.token) return;
   const { Host } = await load('host.mjs');
   // Each space this device has joined keeps its own agents (hostDir); the first one uses 'host'.
-  host = new Host({ url: config.url, token: config.host.token, dataDir: path.join(dataDir(), config.hostDir || 'host'), onChange: notify, appContext: readApps, appCall: (args) => handlers.appsCall(args), skillsDir: path.join(dataDir(), 'skills') });
+  host = new Host({ url: config.url, token: config.host.token, dataDir: path.join(dataDir(), config.hostDir || 'host'), onChange: notify, appCall: (args) => handlers.appsCall(args), skillsDir: path.join(dataDir(), 'skills') });
   const { AppRecords } = await load('app-records.mjs');
   appRecords = new AppRecords(path.join(dataDir(), 'app-records'), config.appProfiles ||= {});
   for (const [id, encrypted] of Object.entries(config.apiKeys || {})) {
@@ -635,28 +635,6 @@ const handlers = {
     return data;
   },
 };
-
-/**
- * What an agent may read from its owner's connected apps: a compact summary of each, fetched on this
- * computer just before the agent runs. Apps that aren't connected or running are skipped.
- */
-async function readApps() {
-  const reads = { swasthya: ['summary', 'appointments'], kosh: ['summary', 'goals'] };
-  const out = [];
-  for (const app of KNOWN_APPS) {
-    if (!config.apps?.[app.id]) continue;
-    const parts = [];
-    for (const route of reads[app.id] || ['summary']) {
-      try { parts.push(`${route}: ${JSON.stringify(await handlers.appsCall({ id: app.id, path: route }))}`); } catch { /* not running right now */ }
-    }
-    if (parts.length) out.push({ name: app.name, kind: app.kind, text: parts.join('\n').slice(0, 6000) });
-  }
-  if (appRecords) for (const id of ['citylines', 'eduspace', 'studio']) {
-    const snapshot = await appRecords.read(id);
-    if (snapshot.data) out.push({ name: id, kind: 'local app', text: JSON.stringify(snapshot).slice(0, 14000) });
-  }
-  return out;
-}
 
 // ---------- updates ----------
 // Installed copies check the website for a newer Larp at start and every 4 hours, download it in the
