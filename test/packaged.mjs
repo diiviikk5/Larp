@@ -9,7 +9,7 @@ import { _electron as electron } from '@playwright/test';
 
 const exe = path.resolve('release/win-unpacked/Larp.exe');
 const data = await fs.mkdtemp(path.join(os.tmpdir(), 'larp-packaged-'));
-const app = await electron.launch({ executablePath: exe, env: { ...process.env, MEKO_API_KEY: '', LARP_DATA_DIR: data, LARP_NO_SPLASH: '1' } });
+const app = await electron.launch({ executablePath: exe, env: { ...process.env, MEKO_API_KEY: '', YUGABYTE_URL: '', LARP_CLOUD: 'off', LARP_DATA_DIR: data, LARP_NO_SPLASH: '1' } });
 try {
   const page = await app.firstWindow();
   await page.waitForFunction(() => Boolean(window.larp), null, { timeout: 30000 });
@@ -27,7 +27,7 @@ try {
   // A second install joins a hosted server, the way a new user would.
   const { spawn } = await import('node:child_process');
   const server = spawn(process.execPath, ['server/cli.mjs', 'serve'], { env: { ...process.env, MEKO_API_KEY: '', PORT: '47970', LARP_SETUP_CODE: 'joinme', LARP_DATA_DIR: path.join(data, 'server'), MEKO_API_KEY: '', YUGABYTE_URL: '' }, stdio: 'ignore' });
-  const second = await electron.launch({ executablePath: exe, env: { ...process.env, MEKO_API_KEY: '', LARP_DATA_DIR: path.join(data, 'second'), LARP_NO_SPLASH: '1' } });
+  const second = await electron.launch({ executablePath: exe, env: { ...process.env, MEKO_API_KEY: '', YUGABYTE_URL: '', LARP_CLOUD: 'off', LARP_DATA_DIR: path.join(data, 'second'), LARP_NO_SPLASH: '1' } });
   try {
     for (let i = 0; i < 50 && !(await fetch('http://127.0.0.1:47970/api/health').then((r) => r.ok).catch(() => false)); i++) await new Promise((r) => setTimeout(r, 200));
     const page2 = await second.firstWindow();

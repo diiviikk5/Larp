@@ -9,7 +9,7 @@ const out = process.argv[2] || path.join(os.tmpdir(), 'larp-pages');
 const preset = process.argv[3] || 'Ocean';
 await fs.mkdir(out, { recursive: true });
 const data = await fs.mkdtemp(path.join(os.tmpdir(), 'larp-pages-'));
-const app = await electron.launch({ args: ['.'], env: { ...process.env, MEKO_API_KEY: '', LARP_DATA_DIR: data, LARP_NO_SPLASH: '1' } });
+const app = await electron.launch({ args: ['.'], env: { ...process.env, MEKO_API_KEY: '', YUGABYTE_URL: '', LARP_CLOUD: 'off', LARP_DATA_DIR: data, LARP_NO_SPLASH: '1' } });
 const errors = [];
 try {
   const page = await app.firstWindow();

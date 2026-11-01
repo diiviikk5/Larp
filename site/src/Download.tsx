@@ -46,7 +46,7 @@ export function Download() {
 
       <footer className="foot">
         <span>LARP — people, agents, proof.</span>
-        <span><a href="./skills.html">Skills →</a>  <a href="./apps.html">Apps →</a></span>
+        <span><a href="./skills.html">Skills →</a>  <a href="./apps.html">Apps →</a>  <a href="./memory.html">Memory, live →</a></span>
         <a href="#top">Back to top ↑</a>
       </footer>
     </div>
