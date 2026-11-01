@@ -2,6 +2,7 @@
 // the invite message, both add an agent on the demo project, and Divik's agent asks Arjun's for help.
 //   npm run build && node test/demo-two-apps.mjs [screenshot folder]           (scripted agents, offline)
 //   DEMO_RUNTIME=codex node test/demo-two-apps.mjs [folder]                     (real Codex, uses your plan)
+//   DEMO_CLOUD=https://larp-seven.vercel.app node test/demo-two-apps.mjs         (memory through live Larp Cloud)
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -10,10 +11,11 @@ import { _electron as electron } from '@playwright/test';
 import { createDemoProject } from '../server/demo-project.mjs';
 
 const runtime = process.env.DEMO_RUNTIME || 'scripted';
+const cloud = process.env.DEMO_CLOUD || 'off';
 const out = process.argv[2] || path.join(os.tmpdir(), 'larp-demo');
 await fs.mkdir(out, { recursive: true });
 const root = await fs.mkdtemp(path.join(os.tmpdir(), 'larp-demo-'));
-const launch = (who) => electron.launch({ args: ['.'], env: { ...process.env, MEKO_API_KEY: '', YUGABYTE_URL: '', LARP_CLOUD: 'off', LARP_DATA_DIR: path.join(root, who), LARP_NO_SPLASH: '1' } });
+const launch = (who) => electron.launch({ args: ['.'], env: { ...process.env, MEKO_API_KEY: '', YUGABYTE_URL: '', LARP_CLOUD: cloud, LARP_DATA_DIR: path.join(root, who), LARP_NO_SPLASH: '1' } });
 const until = async (fn, what, ms = 60_000) => {
   const end = Date.now() + ms;
   while (Date.now() < end) { const v = await fn(); if (v) return v; await new Promise((r) => setTimeout(r, 400)); }
@@ -105,6 +107,29 @@ try {
   assert.ok(done.result.files.some((f) => f.includes('settle.test')), 'Byte\'s tests are in the combined change');
   assert.equal(done.result.check.passed, true, done.result.check.output);
   ok('One combined change from both agents; npm test passed');
+
+  if (cloud !== 'off') {
+    step('Memory went through Larp Cloud (live Meko and YugabyteDB)');
+    const settled = await until(async () => {
+      const s = await state();
+      const t = s.tasks.find((x) => x.id === task.id);
+      return s.memory.store === 'yugabyte' && t.context?.status !== 'pending' && s.memory.calls.some((c) => c.kind === 'write' && c.taskId === task.id) ? s : null;
+    }, 'recall and outcome reach Meko', 120_000);
+    const sol = settled.tasks.find((x) => x.id === task.id);
+    const calls = settled.memory.calls.filter((c) => !c.skipped);
+    const failed = calls.filter((c) => !c.ok);
+    for (const c of calls) console.log(`    ${c.ok ? '✓' : '✗'} ${c.tool.padEnd(22)} ${String(c.ms).padStart(5)} ms  ${c.agent || ''}${c.to ? ' → ' + c.to : ''}  ${c.error || ''}`);
+    assert.equal(settled.memory.via, 'cloud');
+    assert.equal(sol.context.status, 'ready', `Sol's recall: ${sol.context.status} ${sol.context.error || ''}`);
+    assert.equal(failed.length, 0, `failed Meko calls: ${failed.map((c) => c.tool + ': ' + c.error).join('; ')}`);
+    ok(`Sol's recall was ready (${sol.context.items.length} items, ${sol.context.saved} tokens saved); ${calls.length} Meko calls, none failed; stored in YugabyteDB`);
+    const stats = await api(token, 'GET', 'memory/stats');
+    assert.equal(stats.source, 'yugabyte');
+    ok(`Memory stats from ${stats.database}: ${stats.total} calls (${Object.entries(stats.byKind).map(([k, n]) => `${k} ${n}`).join(', ')})`);
+    await dp.locator('.sidebar .nav-item', { hasText: 'Memory' }).click();
+    await dp.waitForTimeout(1500);
+    await dp.screenshot({ path: path.join(out, 'demo-cloud-memory.png'), fullPage: true });
+  }
 } finally {
   for (const a of apps) await a.close().catch(() => {});
   await fs.rm(root, { recursive: true, force: true }).catch(() => {});

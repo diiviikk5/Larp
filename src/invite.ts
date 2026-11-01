@@ -31,7 +31,7 @@ export function inviteMessage({ spaceName, address, code, expiresAt }: { spaceNa
     '',
     `1. Install Larp: ${DOWNLOAD_PAGE} (if Windows warns, choose More info, then Run anyway).`,
     ...(isTailscale(address) ? ['2. Install Tailscale (tailscale.com) and accept my invite to my Tailscale network.'] : ['2. Be on the same Wi-Fi as me.']),
-    '3. Open Larp, choose "Join a space", and paste this invite:',
+    '3. Open Larp, choose "Join a space" (already in a space? open the space menu at the top left → "Join another space"), and paste this invite:',
     '',
     inviteLink(address, code),
     '',
