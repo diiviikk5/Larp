@@ -11,6 +11,21 @@ import {
 
 type Tab = 'conversation' | 'changes' | 'check';
 
+function PendingTask({ refresh, onBack }: { refresh: () => Promise<void>; onBack: () => void }) {
+  const [expired, setExpired] = useState(false);
+  useEffect(() => {
+    const retry = setInterval(() => { void refresh(); }, 1000);
+    const timeout = setTimeout(() => { clearInterval(retry); setExpired(true); }, 10000);
+    return () => { clearInterval(retry); clearTimeout(timeout); };
+  }, [refresh]);
+  return <div className="page"><EmptyState title={expired ? 'Task is not available yet' : 'Loading task…'}>
+    <p role="status">{expired ? 'The space has not returned this task. Check your connection or return to the workspace.' : 'Waiting for the space to send the new task. Your request has been submitted.'}</p>
+    <button className="btn" onClick={() => { void refresh(); }}>Refresh</button>{' '}
+    <button className="btn" onClick={onBack}>Back to workspace</button>
+  </EmptyState></div>;
+}
+
+
 export function TaskDetail({ ctx, id, tab: initialTab, onBack }: { ctx: Ctx; id: string; tab?: Tab; onBack: () => void }) {
   useTick(1000);
   const { state } = ctx;
@@ -25,7 +40,7 @@ export function TaskDetail({ ctx, id, tab: initialTab, onBack }: { ctx: Ctx; id:
   const canAccept = Boolean(task && task.status === 'needs_review' && task.createdBy === state.me.id);
   const lastFeedback = task?.feedback.at(-1)?.text;
   useEffect(() => { if (canAccept && !lesson && lastFeedback) setLesson(lastFeedback); }, [canAccept, lastFeedback]);
-  if (!task) return <div className="page"><EmptyState title="Task not found">It may belong to a space you're no longer in.</EmptyState></div>;
+  if (!task) return <PendingTask key={id} refresh={ctx.larp.refresh} onBack={onBack} />;
 
   const agent = state.agents.find((a) => a.id === task.agentId);
   const owner = state.people.find((p) => p.id === task.ownerId);
