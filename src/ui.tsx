@@ -277,7 +277,7 @@ export function useAction() {
   const run = async (fn: () => Promise<unknown>) => {
     setBusy(true);
     setError('');
-    try { await fn(); return true; } catch (e) { setError((e as Error).message); return false; } finally { setBusy(false); }
+    try { await fn(); return true; } catch (e) { setError((e as Error).message.replace(/^Error invoking remote method '[^']+': (?:Error|TypeError): /, '')); return false; } finally { setBusy(false); }
   };
   return { busy, error, setError, run };
 }

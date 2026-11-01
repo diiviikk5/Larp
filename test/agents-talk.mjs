@@ -131,12 +131,12 @@ try {
   assert.equal((await state(divik)).agents.find((a) => a.id === byte.id).usesApps, true);
   let budget = await api(divik, 'POST', 'tasks', { spaceId: build, agentId: byte.id, title: 'How much can Arjun\'s family spend on dinner?', instructions: 'Check the budget.', kind: 'general' });
   const budgetApproval = await until(async () => (await state(arjun)).approvals.find((a) => a.taskId === budget.id), 'approval for budget');
-  assert.match(budgetApproval.detail, /can read your connected apps/);
+  assert.match(budgetApproval.detail, /can request connected apps/);
   await api(arjun, 'POST', `approvals/${budgetApproval.id}`, { decision: 'approve' });
   budget = await taskOf(divik, budget.id, (t) => t.status === 'needs_review', 'budget answered');
-  assert.match(prompt, /From your owner's Kosh app[\s\S]*budgetLeft/);
-  assert.ok(budget.log.some((l) => l.text === 'Read Kosh for this task'));
-  ok('Arjun\'s approval said Byte reads his apps; Byte\'s prompt carried his Kosh summary, read on his laptop');
+  assert.ok(!prompt.includes('budgetLeft'), 'App records must not be preloaded');
+  assert.ok(!budget.log.some((l) => l.text === 'Read Kosh for this task'));
+  ok('Arjun\'s approval said Byte reads his apps; Byte\'s prompt did not preload private app records');
 
   console.log('\nAll agent-to-agent checks passed.');
 } finally {

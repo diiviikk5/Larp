@@ -3,6 +3,8 @@ import type { DeviceConfig, Space, State } from './types';
 
 export type Route =
   | { page: 'overview' }
+  | { page: 'workspace' }
+  | { page: 'skills' }
   | { page: 'tasks'; filter?: TaskFilter }
   | { page: 'task'; id: string; tab?: 'conversation' | 'changes' | 'check' }
   | { page: 'agents' }

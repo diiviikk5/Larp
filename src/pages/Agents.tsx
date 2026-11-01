@@ -199,20 +199,22 @@ function AgentConfig({ ctx, agent, local }: { ctx: Ctx; agent: Agent; local: Loc
   const [model, setModel] = useState(local.model || '');
   const [ownCodex, setOwnCodex] = useState(Boolean(local.codexHome));
   const [useApps, setUseApps] = useState(Boolean(local.useApps));
+  const [executionMode, setExecutionMode] = useState(local.executionMode || 'workspace');
   const action = useAction();
   const [saved, setSaved] = useState(false);
-  const dirty = runtime !== local.runtime || model !== (local.model || '') || ownCodex !== Boolean(local.codexHome) || useApps !== Boolean(local.useApps);
+  const dirty = executionMode !== (local.executionMode || 'workspace') || runtime !== local.runtime || model !== (local.model || '') || ownCodex !== Boolean(local.codexHome) || useApps !== Boolean(local.useApps);
   return (
     <Card title="Configuration">
       <div className="form">
         <Field label="Runtime"><select value={runtime} onChange={(e) => setRuntime(e.target.value)}>{RUNTIMES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}</select></Field>
         <Field label="Model" hint="Leave empty for the runtime's default."><input value={model} placeholder="default" onChange={(e) => setModel(e.target.value)} /></Field>
         {runtime === 'codex' && <CodexSignIn own={ownCodex} setOwn={setOwnCodex} />}
-        <label className="check-row bare"><input type="checkbox" checked={useApps} onChange={(e) => setUseApps(e.target.checked)} /><span className="grow"><strong>Can read my apps</strong><small>Before each task, it gets a summary from your connected Swasthya and Kosh, on this computer. Others' requests to it say so when you approve them.</small></span></label>
+        <label className="check-row bare"><input type="checkbox" checked={useApps} onChange={(e) => setUseApps(e.target.checked)} /><span className="grow"><strong>Can read my apps</strong><small>Apps are available on demand. Each read or write asks for approval; unrelated tasks receive no app records.</small></span></label>
+        {runtime === 'codex' && <Field label="Execution permissions" hint="Full access asks for owner approval before each turn. It does not add screen or mouse controls."><select value={executionMode} onChange={(e) => setExecutionMode(e.target.value as 'workspace' | 'full-access')}><option value="workspace">Task workspace (default)</option><option value="full-access">Full computer access · ask first</option></select></Field>}
         <Field label="Repository on this computer"><p className="mono small">{local.repoPath || 'None'}</p></Field>
         <div className="row-end">
           {saved && !dirty && <span className="good small">Saved</span>}
-          <button className="btn btn-primary btn-sm" disabled={!dirty || action.busy} onClick={async () => { if (await action.run(() => window.larp!.updateAgent({ agentId: agent.id, patch: { runtime, model: model.trim() || null, codexProfile: runtime === 'codex' && ownCodex, useApps } }))) { setSaved(true); ctx.reloadDevice(); } }}>Save</button>
+          <button className="btn btn-primary btn-sm" disabled={!dirty || action.busy} onClick={async () => { if (await action.run(() => window.larp!.updateAgent({ agentId: agent.id, patch: { runtime, executionMode, model: model.trim() || null, codexProfile: runtime === 'codex' && ownCodex, useApps } }))) { setSaved(true); ctx.reloadDevice(); } }}>Save</button>
         </div>
         <ErrorText error={action.error} />
       </div>
@@ -371,7 +373,7 @@ export function AgentNew({ ctx }: { ctx: Ctx }) {
             )}
             {runtime === 'codex' && <CodexSignIn own={ownCodex} setOwn={setOwnCodex} />}
             {runtime !== 'scripted' && (
-              <label className="check-row bare"><input type="checkbox" checked={useApps} onChange={(e) => setUseApps(e.target.checked)} /><span className="grow"><strong>Can read my apps</strong><small>Before each task it gets a summary from your Swasthya and Kosh, read on this computer. Requests from others say so when you approve them.</small></span></label>
+              <label className="check-row bare"><input type="checkbox" checked={useApps} onChange={(e) => setUseApps(e.target.checked)} /><span className="grow"><strong>Can read my apps</strong><small>Apps are available on demand. Each read or write asks for approval; unrelated tasks receive no app records.</small></span></label>
             )}
             {runtime !== 'scripted' && (
               <Field label="Model" htmlFor="model" hint="Optional. Leave empty to use the runtime's default."><input id="model" className="mono" placeholder={runtime === 'openai' ? 'qwen2.5-coder:7b' : 'default'} value={model} onChange={(e) => setModel(e.target.value)} /></Field>
