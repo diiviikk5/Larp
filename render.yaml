@@ -19,3 +19,6 @@ services:
         generateValue: true
       - key: LARP_SPACE_NAME
         value: Build studio
+      # This space's own row in YugabyteDB (state, events and Meko calls are kept apart by it).
+      - key: LARP_STATE_ID
+        value: hosted-larp
