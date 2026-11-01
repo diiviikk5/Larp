@@ -18,7 +18,7 @@ const log = (s) => console.log('  ✓ ' + s);
 const errors = [];
 
 async function launch(name) {
-  const env = { ...process.env, MEKO_API_KEY: '', LARP_DATA_DIR: path.join(root, name), LARP_NO_SPLASH: '1' };
+  const env = { ...process.env, MEKO_API_KEY: '', YUGABYTE_URL: '', LARP_CLOUD: 'off', LARP_DATA_DIR: path.join(root, name), LARP_NO_SPLASH: '1' };
   delete env.ELECTRON_RUN_AS_NODE;
   const app = await electron.launch({ args: ['.'], env });
   const page = await app.firstWindow();

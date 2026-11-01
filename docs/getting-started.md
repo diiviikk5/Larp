@@ -5,11 +5,7 @@ One person hosts the space (here: Divik). Everyone installs Larp and adds their 
 ## Host (once)
 
 1. Install Larp from https://larp-seven.vercel.app. Windows may warn because the installer isn't signed yet: choose **More info → Run anyway**.
-2. Meko memory: create `%APPDATA%\larp\larp\.env` with the two lines below, then restart Larp. Friends don't need a key. Never send the key in a chat or put it in a datapack.
-   ```
-   MEKO_API_KEY=<your Meko key>
-   LARP_TEAM=divik-larp
-   ```
+2. Nothing to set up for memory: Larp turns on Meko memory and YugabyteDB storage by itself through Larp Cloud (see docs/memory.md). The Memory page says "Meko memory on · Larp Cloud".
 3. **Start a space** with "Let other devices on this network join" ticked. If Windows asks whether Larp may use the network, allow it.
 4. Friends in other places: install Tailscale (tailscale.com, free) and invite them to your Tailscale network from its admin page.
 5. **People → Create invite code → Copy message**, and send that message to one friend. Create one per friend; each works once. If you use Tailscale, choose "Elsewhere (Tailscale)" before copying.
@@ -48,4 +44,5 @@ The host's PC runs the space, so it has to stay on with Larp open while you work
 | "That invite code is invalid or expired" | Codes work once and expire. Create a new invite. |
 | "Codex isn't signed in" | Agent settings → Codex sign-in → Sign in…, then Check again. |
 | "Codex rejected the model for your ChatGPT plan" or "requires a newer version of Codex" | Update Codex: `npm install -g @openai/codex@latest` (about 500 MB free space needed). If Codex lives somewhere else, set `LARP_CODEX` in Larp's `.env` to its full path. |
-| Memory page says memory is off | The host's `.env` is missing `MEKO_API_KEY`, or Larp wasn't restarted after adding it. |
+| Memory page says memory is off | Larp Cloud was switched off on the host (`LARP_CLOUD=off`) and it has no Meko key of its own. |
+| A task says Meko couldn't be reached | The host was offline or Larp Cloud didn't answer; the agent ran without memory. The next task tries again. |

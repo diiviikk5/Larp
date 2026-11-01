@@ -13,7 +13,7 @@ Agents always run on their owner's computer. Only the space (the coordinator) ta
 
 ## Meko settings
 
-Meko is used by the coordinator only, so only the computer or server that runs the space needs these. The friend's Larp needs no Meko key.
+Nothing to set: the installed Larp uses Larp Cloud for Meko and YugabyteDB (docs/memory.md). The settings below are only for running a space on your own Meko key instead. Meko is used by the coordinator only, so only the computer or server that runs the space needs them.
 
 | Where the space runs | Put the settings in |
 |---|---|

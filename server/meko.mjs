@@ -3,6 +3,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import crypto from 'node:crypto';
+import { cloudPost } from './cloud.mjs';
 
 const KIND = {
   memory_add: 'write', conversation_add_message: 'write', conversation_create: 'write',
@@ -19,11 +20,16 @@ const NEEDS_CONVERSATION = new Set(['memory_add', 'memory_search', 'memory_promo
   'datapack_search', 'datapack_create']);
 
 export class Meko {
-  constructor({ apiKey, url = 'https://mcp.mekodata.ai/mcp', team = 'larp', enabled = true, onCall } = {}) {
+  /**
+   * `apiKey` talks to Meko directly. Without one, `cloudDir` sends every call through Larp Cloud,
+   * which holds the key and keeps this coordinator's memories apart from everyone else's.
+   */
+  constructor({ apiKey, cloudDir, url = 'https://mcp.mekodata.ai/mcp', team = 'larp', enabled = true, onCall } = {}) {
     this.apiKey = apiKey;
+    this.cloudDir = apiKey ? null : cloudDir || null;
     this.url = url;
     this.team = team;
-    this.enabled = enabled && Boolean(apiKey);
+    this.enabled = enabled && this.configured;
     this.onCall = onCall || (() => {});
     this.client = null;
     this.connecting = null;
@@ -31,7 +37,10 @@ export class Meko {
     this.conversations = new Map(); // datapack id + agent -> conversation id
   }
 
-  get configured() { return Boolean(this.apiKey); }
+  get configured() { return Boolean(this.apiKey || this.cloudDir); }
+
+  /** Where memory lives, for the UI: 'meko' (own key) or 'cloud' (through Larp Cloud). */
+  get via() { return this.apiKey ? 'meko' : this.cloudDir ? 'cloud' : null; }
 
   setEnabled(on) { this.enabled = Boolean(on) && this.configured; }
 
@@ -42,7 +51,7 @@ export class Meko {
     if (this.client) return this.client;
     if (this.connecting) return this.connecting;
     this.connecting = (async () => {
-      const client = new Client({ name: 'larp', version: '0.6.2' });
+      const client = new Client({ name: 'larp', version: '0.6.4' });
       const transport = new StreamableHTTPClientTransport(new URL(this.url), {
         requestInit: { headers: { Authorization: `Bearer ${this.apiKey}` } },
       });
@@ -74,21 +83,12 @@ export class Meko {
     }
     const started = performance.now();
     try {
-      const client = await this.connect();
       args = { ...args };
       if (args.metadata && typeof args.metadata !== 'string') args.metadata = JSON.stringify(args.metadata);
-      if (NEEDS_CONVERSATION.has(tool) && !args.conversation_id) args.conversation_id = await this.conversation(args.datapack_id, args.agent_id || meta.agent);
-      let response;
-      try {
-        response = await client.callTool({ name: tool, arguments: args });
-      } catch (error) {
-        // A dropped connection (flaky Wi-Fi) is retried once on a fresh connection; Meko's own errors aren't.
-        if (!/fetch failed|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket|network|terminated/i.test(error.message)) throw error;
-        await this.close();
-        response = await (await this.connect()).callTool({ name: tool, arguments: args });
-      }
-      const result = parse(response);
-      if (response.isError || result?.error) throw new Error(typeof result?.error === 'string' ? result.error : JSON.stringify(result?.error || result).slice(0, 300));
+      // Larp Cloud answers datapack lookups itself, without a conversation.
+      if (NEEDS_CONVERSATION.has(tool) && !args.conversation_id && !(this.cloudDir && tool.startsWith('datapack_'))) args.conversation_id = await this.conversation(args.datapack_id, args.agent_id || meta.agent);
+      const { result, isError } = await this.raw(tool, args);
+      if (isError || result?.error) throw new Error(typeof result?.error === 'string' ? result.error : JSON.stringify(result?.error || result).slice(0, 300));
       entry.ms = Math.round(performance.now() - started);
       entry.resultCount = Array.isArray(result?.results) ? result.results.length : Array.isArray(result?.results?.memory) ? result.results.memory.length + (result.results.knowledge_base?.length || 0) : null;
       // context_search reports how many tokens its recall saved: the number Larp's royalties are paid in.
@@ -104,18 +104,35 @@ export class Meko {
     }
   }
 
+  /** Call a tool without logging: through Larp Cloud, or straight to Meko. */
+  async raw(tool, args) {
+    if (this.cloudDir) {
+      const body = await cloudPost(this.cloudDir, 'meko', { tool, args });
+      return { result: body.result ?? null, isError: Boolean(body.isError) };
+    }
+    const client = await this.connect();
+    let response;
+    try {
+      response = await client.callTool({ name: tool, arguments: args });
+    } catch (error) {
+      // A dropped connection (flaky Wi-Fi) is retried once on a fresh connection; Meko's own errors aren't.
+      if (!/fetch failed|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket|network|terminated/i.test(error.message)) throw error;
+      await this.close();
+      response = await (await this.connect()).callTool({ name: tool, arguments: args });
+    }
+    return { result: parse(response), isError: Boolean(response.isError) };
+  }
+
   /** One conversation per agent per datapack, created once; a stable session id makes Meko reuse it across restarts. */
   async conversation(datapackId, agent) {
     const key = `${datapackId}|${agent}`;
     if (!this.conversations.has(key)) {
       this.conversations.set(key, (async () => {
-        const client = await this.connect();
-        const response = await client.callTool({ name: 'conversation_create', arguments: {
+        const { result, isError } = await this.raw('conversation_create', {
           datapack_id: datapackId, agent_id: agent || 'larp', title: `Larp: ${agent || 'larp'}`, session_id: `larp-${datapackId}-${agent}`,
-        } });
-        const result = parse(response);
+        });
         const id = result?.id || result?.conversation_id;
-        if (response.isError || !id) throw new Error(`Meko didn't open a conversation: ${JSON.stringify(result).slice(0, 200)}`);
+        if (isError || !id) throw new Error(`Meko didn't open a conversation: ${JSON.stringify(result).slice(0, 200)}`);
         return id;
       })().catch((error) => { this.conversations.delete(key); throw error; }));
     }
@@ -250,6 +267,7 @@ export class Meko {
   }
 
   async listTools() {
+    if (this.cloudDir) return [];
     const client = await this.connect();
     return (await client.listTools()).tools;
   }

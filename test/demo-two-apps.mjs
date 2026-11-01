@@ -13,7 +13,7 @@ const runtime = process.env.DEMO_RUNTIME || 'scripted';
 const out = process.argv[2] || path.join(os.tmpdir(), 'larp-demo');
 await fs.mkdir(out, { recursive: true });
 const root = await fs.mkdtemp(path.join(os.tmpdir(), 'larp-demo-'));
-const launch = (who) => electron.launch({ args: ['.'], env: { ...process.env, MEKO_API_KEY: '', LARP_DATA_DIR: path.join(root, who), LARP_NO_SPLASH: '1' } });
+const launch = (who) => electron.launch({ args: ['.'], env: { ...process.env, MEKO_API_KEY: '', YUGABYTE_URL: '', LARP_CLOUD: 'off', LARP_DATA_DIR: path.join(root, who), LARP_NO_SPLASH: '1' } });
 const until = async (fn, what, ms = 60_000) => {
   const end = Date.now() + ms;
   while (Date.now() < end) { const v = await fn(); if (v) return v; await new Promise((r) => setTimeout(r, 400)); }

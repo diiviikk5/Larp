@@ -10,6 +10,8 @@ import { Store, newId, newSecret, hashToken } from './store.mjs';
 import { Meko } from './meko.mjs';
 import { Memory } from './memory.mjs';
 import { Telegram } from './telegram.mjs';
+import { Yugabyte } from './db.mjs';
+import { CloudStore, cloudUrl } from './cloud.mjs';
 
 // Muted person colors that sit well on both the black and the white theme.
 const COLORS = ['#8a8f99', '#c4875a', '#5f9d7d', '#a07aae', '#6a8fbd', '#b39a5f'];
@@ -34,13 +36,16 @@ function text(value, name, max = 4000) {
 
 export class Coordinator {
   /**
-   * meko: a Meko client for agent memory (default: from MEKO_API_KEY, if set).
-   * db: a YugabyteDB connection (server/db.mjs) for state, events and the Meko call log (default: local files).
+   * meko: a Meko client for agent memory (default: MEKO_API_KEY if set, else Meko through Larp Cloud).
+   * db: a YugabyteDB connection (server/db.mjs) for state, events and the Meko call log (default: local
+   * files, joined by Larp Cloud's YugabyteDB in the background when it's on).
    */
   constructor({ dataDir, meko, db } = {}) {
     this.db = db || null;
     this.store = new Store(dataDir, this.db);
-    if (meko === undefined && process.env.MEKO_API_KEY) meko = new Meko({ apiKey: process.env.MEKO_API_KEY, team: process.env.LARP_TEAM || 'larp' });
+    if (meko === undefined && (process.env.MEKO_API_KEY || cloudUrl())) {
+      meko = new Meko({ apiKey: process.env.MEKO_API_KEY, cloudDir: cloudUrl() ? dataDir : null, team: process.env.LARP_TEAM || 'larp' });
+    }
     if (meko) meko.onCall = (entry) => this.logMekoCall(entry);
     this.memory = new Memory(this, meko || null);
     this.telegram = new Telegram(this);
@@ -55,6 +60,37 @@ export class Coordinator {
     await this.store.load();
     this.memory.meko?.setEnabled(this.memory.on);
     this.telegram.start();
+    if (!this.db && (process.env.YUGABYTE_URL || cloudUrl())) this.keepTryingDb();
+  }
+
+  /**
+   * YugabyteDB (your own, or Larp Cloud's) isn't attached yet: it wasn't reachable at startup (some
+   * networks drop many new connections), or it's Larp Cloud, which never delays startup. Keep trying in the background, and once it answers, switch to it and copy over what was recorded
+   * in the meantime (state, events, Meko calls), so the database has the full history.
+   */
+  keepTryingDb() {
+    const attempt = async () => {
+      if (this.db || this.attachingDb) return;
+      this.attachingDb = true;
+      try {
+        const db = process.env.YUGABYTE_URL ? await Yugabyte.connect(process.env.YUGABYTE_URL, 2) : await CloudStore.connect(this.store.dir);
+        this.db = db;
+        this.store.db = db;
+        await db.saveState(this.s);
+        for (const e of this.s.events) await db.appendEvent(e).catch(() => {});
+        for (const c of this.s.mekoCalls) await db.logCall(c).catch(() => {});
+        clearInterval(this.dbRetry);
+        console.log(`[larp] storing in ${db.label}; state, ${this.s.events.length} events and ${this.s.mekoCalls.length} Meko calls copied over`);
+        this.changed();
+      } catch (error) {
+        if (!this.dbWarned) console.error(`[larp] database not reachable yet (${error.message}); trying again every minute`);
+        this.dbWarned = true;
+      } finally {
+        this.attachingDb = false;
+      }
+    };
+    this.dbRetry = setInterval(attempt, 60_000);
+    this.dbFirstTry = setTimeout(attempt, process.env.YUGABYTE_URL ? 5_000 : 500);
   }
 
   logMekoCall(entry) {
@@ -822,7 +858,7 @@ export class Coordinator {
   // ---------- agent memory ----------
 
   toggleMemory(personId, { on }) {
-    if (!this.memory.configured) fail(409, 'Add MEKO_API_KEY to .env to give agents memory');
+    if (!this.memory.configured) fail(409, 'Agent memory is off on this computer (LARP_CLOUD=off and no Meko key)');
     this.memory.setOn(on);
     this.store.record({ type: 'memory.toggled', actor: personId, text: `turned agent memory ${this.memory.on ? 'on' : 'off'}` });
     this.changed();
@@ -933,6 +969,8 @@ export class Coordinator {
   async close() {
     clearInterval(this.heartbeat);
     clearInterval(this.nightly);
+    clearInterval(this.dbRetry);
+    clearTimeout(this.dbFirstTry);
     await this.telegram.stop();
     for (const stream of this.streams) stream.end();
     this.streams.clear();
