@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld('larp', {
   joinSpace: call('joinSpace'),
   joinAnother: call('joinAnother'),
   switchDevice: call('switchDevice'),
+  retry: call('retry'),
+  leaveSpace: call('leaveSpace'),
   addPerson: call('addPerson'),
   switchPerson: call('switchPerson'),
   addAgent: call('addAgent'),
