@@ -86,13 +86,14 @@ export async function startBuiltinApps({ appsDir, dataDir, log = console.log }) 
         await api.save();
         log(`[larp apps] ${app.className}: sample ${family.family} family`);
       }
-      const dist = path.join(dir, 'dist');
+      const dist = path.resolve(dir, 'dist');
       const server = http.createServer(async (req, res) => {
         try {
           if (await api.handle(req, res)) return;
           const url = new URL(req.url, 'http://localhost');
           let file = path.join(dist, decodeURIComponent(url.pathname));
-          if (!file.startsWith(dist)) { res.writeHead(403).end(); return; }
+          // Require a directory boundary: a sibling such as dist-private is outside dist.
+          if (file !== dist && !file.startsWith(dist + path.sep)) { res.writeHead(403).end(); return; }
           try { if ((await fs.stat(file)).isDirectory()) file = path.join(file, 'index.html'); } catch { file = path.join(dist, 'index.html'); }
           const body = await fs.readFile(file);
           res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream' });
