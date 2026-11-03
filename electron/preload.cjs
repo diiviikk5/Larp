@@ -3,6 +3,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 const call = (name) => (args) => ipcRenderer.invoke(`larp:${name}`, args);
 
 contextBridge.exposeInMainWorld('larp', {
+  workspace: call('workspace'),
+  appSnapshot: call('appSnapshot'),
   config: call('config'),
   createSpace: call('createSpace'),
   joinSpace: call('joinSpace'),

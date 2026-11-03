@@ -167,10 +167,29 @@ export class Telegram {
     const personId = this.personFor(chatId);
     if (!personId) return this.send(chatId, 'This chat isn’t linked yet. Open Larp → Settings → Telegram and press “Link my Telegram”.');
 
+    const command = text.match(/^\/(chat|stop|trace)\s+(\S+)(?:\s+([\s\S]+))?$/);
+    if (command) {
+      const [, kind, id, message] = command;
+      const task = this.c.task(personId, id);
+      if (![task.ownerId, task.createdBy].includes(personId)) return this.send(chatId, 'Only the owner or requester can control this task.');
+      if (kind === 'stop') { this.c.cancelTask(personId, id); return this.send(chatId, 'Task stopped.'); }
+      if (kind === 'trace') return this.send(chatId, clip([`${task.id} · ${task.status}`, ...task.log.slice(-12).map((l) => `${l.kind}: ${l.text}`)].join('\n'), 3800));
+      this.c.messageTask(personId, id, { text: message });
+      return this.send(chatId, 'Follow-up added to the same conversation. A running agent picks it up at its next turn boundary.');
+    }
+    const replyId = this.config.messageTasks?.[`${chatId}:${msg.reply_to_message?.message_id}`];
+    if (replyId && !text.startsWith('/')) {
+      this.c.messageTask(personId, replyId, { text });
+      return this.send(chatId, 'Reply delivered to the same agent conversation.');
+    }
     if (/^\/help/.test(text)) return this.send(chatId, [
       'What you can do here:',
       '• Type a task, and your agent starts on it. Start with @Name to ask someone else’s agent (they approve it).',
       '• /tasks: your recent tasks',
+      '• /chat TASK_ID message: steer or continue a task',
+      '• /trace TASK_ID: latest skill, tool and agent activity',
+      '• /stop TASK_ID: stop a task',
+      '• Reply to a task acknowledgement to continue that conversation.',
       '• /todo: open checklist items you can take',
       '• /agents: agents in your space',
       'I also message you approvals and results, with buttons.',
@@ -207,9 +226,11 @@ export class Telegram {
       kind: space.kind === 'home' || !agent.repo ? 'general' : 'code',
     });
     const owner = this.s.people[agent.ownerId]?.name;
-    return this.send(chatId, task.status === 'awaiting_approval'
+    const sent = await this.send(chatId, task.status === 'awaiting_approval'
       ? `Asked ${owner}’s agent ${agent.name}. ${owner} needs to approve it first; I’ll tell you when it’s done.`
-      : `${agent.name} is on it. I’ll message you when it’s done.`);
+      : `${agent.name} is on it. Task: ${task.id}. Reply to this message to steer it, or /trace ${task.id}.`);
+    if (sent?.message_id) { (this.config.messageTasks ||= {})[`${chatId}:${sent.message_id}`] = task.id; this.c.changed(); }
+    return sent;
   }
 
   async handleButton(q) {

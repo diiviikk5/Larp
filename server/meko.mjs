@@ -205,12 +205,12 @@ export class Meko {
     return { items: [...mem, ...kb], saved: Number(r?.token_savings?.tokens_saved) || 0, quality: r?.match_quality || null, hint: r?.agent_hint || null };
   }
 
-  /** Every memory in a datapack, page by page (for the nightly review). */
+  /** A recent window for maintenance. Never claim this is a full export. */
   async listAll({ agent, key, datapack, meta = {} }) {
     const id = await this.datapack(datapack, agent);
     const out = [];
-    for (let page = 1; page <= 20; page++) {
-      const r = await this.call('memory_get_all', { datapack_id: id, agent_id: key || agent, page, page_size: 100 }, { agent, datapack, summary: `review page ${page}`, ...meta });
+    for (let page = 1; page <= 1; page++) {
+      const r = await this.call('memory_get_all', { datapack_id: id, agent_id: key || agent }, { agent, datapack, summary: 'review recent memory window', ...meta });
       for (const m of r?.memories || []) out.push({ id: m.id, text: m.data || m.memory || '', at: m.created_at || null, conversation: m.conversation_id || null, writer: m.agent_id || null });
       if (!r || page >= (r.total_pages || 1)) break;
     }
@@ -224,6 +224,8 @@ export class Meko {
   async artifact({ agent, key, datapack, filename, text, contentType = 'text/plain', meta = {} }) {
     const id = await this.datapack(datapack, agent);
     const r = await this.call('artifact_put', { datapack_id: id, agent_id: key || agent, filename, content_base64: Buffer.from(text, 'utf8').toString('base64'), content_type: contentType }, { agent, datapack, summary: filename, ...meta });
+    const expected = crypto.createHash('sha256').update(text, 'utf8').digest('hex');
+    if (r?.content_hash !== expected) throw new Error('Meko artifact hash did not match the uploaded bytes');
     return { artifactId: r?.artifact_id || null, hash: r?.content_hash || null, filename: r?.filename || filename, size: r?.size_bytes ?? null, duplicate: Boolean(r?.filename && r.filename !== filename) };
   }
 

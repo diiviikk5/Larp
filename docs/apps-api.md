@@ -1,4 +1,4 @@
-# Larp apps: Swasthya and Kosh
+# Larp apps: local agent integration
 
 Two family apps ship with Larp as built-in integrations. Each runs on the owner's own computer and keeps its data there. Larp's desktop app connects to them from the Apps panel, on the owner's computer only.
 
@@ -54,6 +54,18 @@ Larp uses: the month's stats, requests to approve, bills to pay, goals, the feed
 
 ## Rules for agents
 
-- Agents don't call the apps themselves. They find this contract through Meko, so they can plan around it and propose actions; a person carries them out from the Apps panel. Write endpoints (`*.write`) change family data.
+- Agents request app operations through the host by writing .larp/app-request.json with id, method, path and optional body, then yielding. The host resumes the agent with .larp/app-result.json. API-model agents can use the equivalent app_request tool. Writes pause for owner approval on desktop, paired phone or Telegram; only successful operations produce success receipts. Paths omit the /api/ prefix. Tokens stay in the main process.
 - Health and money details never go into Meko. Only the task text and the agent's result do.
 - The apps answer on `localhost`. A friend's Larp on another computer can't reach your apps; they connect their own copies.
+
+## Citylines, EduSpace and Studio
+
+Open each embedded app once to initialize synchronization with the host. Agents with app permission read the same records displayed in the app. Updates propagate back into the embedded interface, with revision checks preventing stale whole-state overwrites.
+
+App IDs: citylines, eduspace, studio. Routes:
+
+- GET state (or summary): returns revision, data and updatedAt. Inspect data to discover collection names and existing record fields.
+- POST records with body {collection, record}: adds a record and assigns a new id. Supply the complete fields expected by that app's UI, following its existing record shape.
+- PATCH records with body {collection, id, patch}: updates an existing record, preserving its id.
+
+Both write routes require owner approval when requested by agents. These are local record changes; they do not book transport or trigger external transactions. See local-workspace.md for the shared agent workflow and current integration limits.

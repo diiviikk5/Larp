@@ -18,6 +18,24 @@ if (cmd === 'login') {
   console.log('If your browser did not open, navigate to this URL to authenticate:\n');
   console.log('https://auth.openai.com/oauth/authorize?response_type=code&client_id=test&redirect_uri=http%3A%2F%2F127.0.0.1%3A1455%2Fauth%2Fcallback&state=test\n');
   const timer = setInterval(() => { if (fs.existsSync(auth)) { console.log('Successfully logged in'); clearInterval(timer); process.exit(0); } }, 300);
+} else if (cmd === 'exec') {
+  // A busy run: Codex-style JSON events, FAKE_CODEX_RATE a second for FAKE_CODEX_SECONDS, then done.
+  const rate = Number(process.env.FAKE_CODEX_RATE) || 40;
+  const seconds = Number(process.env.FAKE_CODEX_SECONDS) || 20;
+  const out = (o) => process.stdout.write(JSON.stringify(o) + '\n');
+  out({ type: 'thread.started', thread_id: 'fake' });
+  let n = 0;
+  const timer = setInterval(() => {
+    n++;
+    out(n % 3 ? { type: 'item.completed', item: { type: 'reasoning', text: `Thinking step ${n}: ${'reading the code and planning the next change '.repeat(6)}` } }
+      : { type: 'item.completed', item: { type: 'command_execution', command: `rg -n "settle" src test # step ${n}` } });
+    if (n >= rate * seconds) {
+      clearInterval(timer);
+      out({ type: 'item.completed', item: { type: 'agent_message', text: `Done after ${n} steps.` } });
+      out({ type: 'turn.completed' });
+      setTimeout(() => process.exit(0), 50);
+    }
+  }, 1000 / rate);
 } else {
   console.log('fake codex');
 }

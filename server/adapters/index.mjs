@@ -6,14 +6,15 @@
 // requestApproval(title, detail) resolves to true/false once the agent's owner answers.
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { jsonLines } from './process.mjs';
+import { jsonLines, run } from './process.mjs';
 import { runOpenAICompatible } from './openai.mjs';
 import { runHermes } from './hermes.mjs';
+import runtimePaths from '../runtime-paths.cjs';
 
 const MODEL = /^[\w.:\-/]{1,80}$/;
 
 /** The Codex CLI to run: LARP_CODEX (a full path, for a copy installed elsewhere) or `codex` on the PATH. */
-export const codexCommand = () => process.env.LARP_CODEX || 'codex';
+export const codexCommand = runtimePaths.codexCommand;
 
 /** The environment for a child agent CLI, minus markers that make it think it is nested in another session. */
 function cleanEnv() {
@@ -132,19 +133,25 @@ async function runClaude({ prompt, cwd, config, onLog, signal }) {
 
 /** Codex in exec mode, sandboxed to the worktree. */
 async function runCodex(options) {
+  const version = await run(codexCommand(), ['--version'], { env: cleanEnv(), timeout: 10000, shell: process.platform === 'win32' && !/\.exe$/i.test(codexCommand()), signal: options.signal });
+  if (options.signal?.aborted) throw new Error('Cancelled');
+  if (version.exitCode !== 0) throw new Error(`Could not start Codex: ${version.output.slice(-300)}`);
+  options.onLog('note', `Runtime version: ${version.output.trim().split('\n')[0]}`);
+  const parsed = version.output.match(/codex-cli (\d+)\.(\d+)/);
+  if (options.config.model === 'gpt-6-luna' && parsed && Number(parsed[1]) === 0 && Number(parsed[2]) < 166) throw new Error('This installed Codex CLI is too old for gpt-6-luna in Larp. Update Codex or select the runtime default model.');
   try {
     return await runCodexOnce(options, []);
   } catch (error) {
     // Older configs carry service_tier = "default", which current Codex rejects before doing anything.
     // Override just that value for this run instead of touching the user's config file.
     if (!/service_tier|unknown variant `default`/.test(error.message) || options.signal?.aborted) throw error;
-    options.onLog('note', 'Your Codex config has an invalid service_tier ("default"); running this task with service_tier=fast. Remove that line from ~/.codex/config.toml to use your normal setting.');
+    options.onLog('note', 'This Codex CLI rejected the configured service tier; retrying this turn with service_tier=fast.');
     return runCodexOnce(options, ['-c', 'service_tier="fast"']);
   }
 }
 
 async function runCodexOnce({ prompt, cwd, config, onLog, signal }, overrides) {
-  const args = [...overrides, 'exec', '--json', '--sandbox', 'workspace-write', '--skip-git-repo-check'];
+  const args = [...overrides, 'exec', '--json', '--sandbox', config.executionMode === 'full-access' ? 'danger-full-access' : 'workspace-write', '--skip-git-repo-check'];
   if (config.model && MODEL.test(config.model)) args.push('-m', config.model);
   args.push('-');
   let summary = '';
@@ -153,7 +160,8 @@ async function runCodexOnce({ prompt, cwd, config, onLog, signal }, overrides) {
     // A separate Codex profile (its own sign-in and config) when the agent has one; otherwise the computer's own.
     cwd, input: prompt, signal, env: config.codexHome ? { ...cleanEnv(), CODEX_HOME: config.codexHome } : cleanEnv(),
     // codex is an npm .cmd shim on Windows, which needs a shell. Arguments are fixed or validated above.
-    shell: process.platform === 'win32',
+    shell: process.platform === 'win32' && !/\.exe$/i.test(codexCommand()),
+    isComplete: (msg) => msg.type === 'turn.completed' || msg.type === 'turn.failed',
     onJson: (msg) => {
       const item = msg.item;
       if (msg.type === 'error' || msg.type === 'turn.failed') failed = msg.message || msg.error?.message || 'Codex reported an error';

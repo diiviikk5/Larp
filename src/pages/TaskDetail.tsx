@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, ArrowLeft, ArrowUp, Brain, Check, ChevronRight, FileCode2, GitBranch, Square, Terminal, X } from 'lucide-react';
 import type { Ctx } from '../route';
 import { confirmDialog } from '../feedback';
+import { workspaceCall } from './Workspace';
 import type { Task } from '../types';
 import {
   AgentAvatar, Avatar, CheckBadge, DiffView, Markdown, EmptyState, ErrorText, Kbd, StatusBadge, agentStatus, clock, diffFiles, diffStats,
@@ -10,6 +11,21 @@ import {
 
 type Tab = 'conversation' | 'changes' | 'check';
 
+function PendingTask({ refresh, onBack }: { refresh: () => Promise<void>; onBack: () => void }) {
+  const [expired, setExpired] = useState(false);
+  useEffect(() => {
+    const retry = setInterval(() => { void refresh(); }, 1000);
+    const timeout = setTimeout(() => { clearInterval(retry); setExpired(true); }, 10000);
+    return () => { clearInterval(retry); clearTimeout(timeout); };
+  }, [refresh]);
+  return <div className="page"><EmptyState title={expired ? 'Task is not available yet' : 'Loading task…'}>
+    <p role="status">{expired ? 'The space has not returned this task. Check your connection or return to the workspace.' : 'Waiting for the space to send the new task. Your request has been submitted.'}</p>
+    <button className="btn" onClick={() => { void refresh(); }}>Refresh</button>{' '}
+    <button className="btn" onClick={onBack}>Back to workspace</button>
+  </EmptyState></div>;
+}
+
+
 export function TaskDetail({ ctx, id, tab: initialTab, onBack }: { ctx: Ctx; id: string; tab?: Tab; onBack: () => void }) {
   useTick(1000);
   const { state } = ctx;
@@ -17,7 +33,14 @@ export function TaskDetail({ ctx, id, tab: initialTab, onBack }: { ctx: Ctx; id:
   const [tab, setTab] = useState<Tab>(initialTab || 'conversation');
   const action = useAction();
   const reply = useRef<HTMLTextAreaElement>(null);
-  if (!task) return <div className="page"><EmptyState title="Task not found">It may belong to a space you're no longer in.</EmptyState></div>;
+  // Every hook comes before the early return below. A new task is often missing for one render
+  // (it reaches this page before the state does); hooks after that return changed their count
+  // between renders, React threw error #310, and the whole window went blank.
+  const [lesson, setLesson] = useState('');
+  const canAccept = Boolean(task && task.status === 'needs_review' && task.createdBy === state.me.id);
+  const lastFeedback = task?.feedback.at(-1)?.text;
+  useEffect(() => { if (canAccept && !lesson && lastFeedback) setLesson(lastFeedback); }, [canAccept, lastFeedback]);
+  if (!task) return <PendingTask key={id} refresh={ctx.larp.refresh} onBack={onBack} />;
 
   const agent = state.agents.find((a) => a.id === task.agentId);
   const owner = state.people.find((p) => p.id === task.ownerId);
@@ -29,13 +52,10 @@ export function TaskDetail({ ctx, id, tab: initialTab, onBack }: { ctx: Ctx; id:
   const canReview = task.createdBy === state.me.id || task.ownerId === state.me.id;
   const reviewable = canReview && ['needs_review', 'failed', 'interrupted'].includes(task.status);
   const active = ['awaiting_approval', 'queued', 'running', 'revision_requested'].includes(task.status);
-  const canAccept = task.status === 'needs_review' && task.createdBy === state.me.id;
   const myHosts = state.hosts.filter((h) => h.ownerId === state.me.id);
   const applyHost = myHosts.find((h) => h.id === ctx.device?.host?.hostId) || myHosts[0];
   const apply = result?.diff && applyHost;
   const memoryOn = state.memory?.on;
-  const [lesson, setLesson] = useState('');
-  useEffect(() => { if (canAccept && !lesson && task.feedback.length) setLesson(task.feedback.at(-1)!.text); }, [canAccept, task.feedback.length]);
 
   const accept = async () => {
     if (check && !check.passed && !(await confirmDialog({ title: 'Accept a result that failed its check?', body: `${task.check} exited with code ${check.exitCode} on the agent owner's machine.`, confirmLabel: 'Accept anyway', danger: true }))) return;
@@ -57,6 +77,9 @@ export function TaskDetail({ ctx, id, tab: initialTab, onBack }: { ctx: Ctx; id:
           </div>
         </div>
         <div className="detail-actions">
+          {task.applied?.ok && task.createdBy === state.me.id && <button className="btn" disabled={action.busy} onClick={() => action.run(async () => {
+            if (await confirmDialog({ title: 'Push and open a draft PR?', body: `Push ${task.applied!.branch} to this repository's GitHub origin and create a draft pull request.`, confirmLabel: 'Push & create draft' })) await workspaceCall(ctx, { action: 'openPullRequest', taskId: task.id });
+          })}><GitBranch size={14} /> Open draft PR</button>}
           {myApproval && (
             <>
               <button className="btn" disabled={action.busy} onClick={() => action.run(() => ctx.larp.act('POST', `approvals/${myApproval.id}`, { decision: 'deny' }))}>Decline</button>
@@ -261,7 +284,7 @@ function Conversation({ ctx, task, replyRef, reviewable, onOpenChanges }: { ctx:
   const waiting = state.waitingOn.find((a) => a.taskId === task.id);
   const myApproval = state.approvals.find((a) => a.taskId === task.id);
   const end = useRef<HTMLDivElement>(null);
-  useEffect(() => { end.current?.scrollIntoView({ block: 'end' }); }, [task.log.length, task.status]);
+  useEffect(() => { end.current?.scrollIntoView({ block: 'end' }); }, [task.log.at(-1)?.at, task.log.length, task.status]);
 
   const entries: Entry[] = [
     ...task.log.map((line) => ({ at: line.at, kind: 'log' as const, line })),
@@ -358,13 +381,15 @@ function ThreadComposer({ ctx, task, replyRef, reviewable }: { ctx: Ctx; task: T
   const agent = state.agents.find((a) => a.id === task.agentId);
   const owner = state.people.find((p) => p.id === task.ownerId);
   const canAct = task.createdBy === state.me.id || task.ownerId === state.me.id;
-  const active = ['awaiting_approval', 'queued', 'running', 'revision_requested', 'applying', 'accepted'].includes(task.status);
+  const active = ['awaiting_approval', 'queued', 'running', 'waiting', 'revision_requested', 'applying', 'accepted'].includes(task.status);
   const theirs = owner?.id === state.me.id ? 'your agent' : `${owner?.name}'s agent`;
 
   const mode: 'revise' | 'busy' | 'followup' = reviewable ? 'revise' : active ? 'busy' : 'followup';
   const submit = async () => {
     if (!text.trim() || !agent) return;
-    if (mode === 'revise') {
+    if (mode === 'busy' && !['accepted', 'applying'].includes(task.status)) {
+      if (await action.run(() => ctx.larp.act('POST', `tasks/${task.id}/message`, { text }))) setText('');
+    } else if (mode === 'revise') {
       if (await action.run(() => ctx.larp.act('POST', `tasks/${task.id}/revise`, { feedback: text }))) setText('');
     } else if (mode === 'followup') {
       const [first, ...rest] = text.trim().split('\n');
@@ -381,14 +406,14 @@ function ThreadComposer({ ctx, task, replyRef, reviewable }: { ctx: Ctx; task: T
   };
 
   const placeholder = mode === 'revise' ? `Ask ${agent?.name} for changes. It continues on the same branch.`
-    : mode === 'busy' ? (task.status === 'awaiting_approval' ? `Waiting for ${owner?.name} to approve…` : `${agent?.name} is working. You can reply when it finishes.`)
+    : mode === 'busy' ? (task.status === 'awaiting_approval' ? `Waiting for ${owner?.name} to approve…` : `${agent?.name} is working. Send guidance for its next turn.`)
       : `Start a follow-up task for ${agent?.name}…`;
   const hint = mode === 'revise' ? `Sends a revision to ${theirs}` : mode === 'busy' ? `${agent?.name} · ${task.status.replace('_', ' ')}` : `Creates a new task for ${theirs}${task.check ? ' with the same check' : ''}`;
 
   return (
     <div className={'composer mode-' + mode}>
       <textarea ref={replyRef} rows={2} aria-label={mode === 'revise' ? 'Request changes' : mode === 'followup' ? 'Follow-up task' : 'Reply'} placeholder={placeholder}
-        disabled={mode === 'busy' || !canAct && mode === 'revise'} value={text}
+        disabled={['accepted', 'applying'].includes(task.status) || !canAct} value={text}
         onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); submit(); } }} />
       <div className="composer-row">
         {agent && <AgentAvatar agent={agent} owner={owner} size={18} status={agentStatus(agent)} />}
@@ -398,7 +423,7 @@ function ThreadComposer({ ctx, task, replyRef, reviewable }: { ctx: Ctx; task: T
           <button className="btn btn-sm" disabled={action.busy} onClick={() => action.run(() => ctx.larp.act('POST', `tasks/${task.id}/cancel`))}><Square size={12} /> Stop</button>
         )}
         {mode !== 'busy' && <span className="faint small"><Kbd>Ctrl</Kbd> <Kbd>Enter</Kbd></span>}
-        {mode !== 'busy' && (
+        {!['accepted', 'applying'].includes(task.status) && (
           <button className="btn btn-primary btn-sm" aria-label={mode === 'revise' ? 'Send revision' : 'Start follow-up'} disabled={!text.trim() || action.busy} onClick={submit}>
             <ArrowUp size={14} /> {mode === 'revise' ? 'Send' : 'Start'}
           </button>

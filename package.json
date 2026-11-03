@@ -72,6 +72,7 @@
     "files": [
       "electron/**",
       "server/**",
+      "site/src/skills/skills.json",
       "dist/**",
       "apps/**",
       "public/larp-icon.png",

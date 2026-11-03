@@ -139,9 +139,9 @@ export class Memory {
       add('memory', agent.name, own.items);
       add('space', space.name, asApproved(this.ownSpace(shared.items, space)));
       // Delegated: the requester's agents hand over what they know about this topic.
-      if (task.createdBy !== agent.ownerId) {
+      if (task.askedBy || task.createdBy !== agent.ownerId) {
         const requester = this.s.people[task.createdBy]?.name || 'Someone';
-        for (const theirs of this.requesterAgents(task)) {
+        for (const theirs of (task.askedBy ? [this.s.agents[task.askedBy]].filter(Boolean) : this.requesterAgents(task))) {
           const found = await this.meko.search({ agent: theirs.name, key: this.memKey(theirs), datapack: this.spacePack(space), query, limit: 3, meta: this.meta(task, { agentId: theirs.id }) });
           const known = found.items.filter((h) => h.score === null || h.score >= 0.3);
           if (!known.length) continue;
@@ -224,13 +224,13 @@ export class Memory {
 
   /** Accepted delegated work: the working agent hands the outcome back to the requester's agents. */
   handBack(task) {
-    if (!this.on || task.createdBy === task.ownerId) return;
+    if (!this.on || (!task.askedBy && task.createdBy === task.ownerId)) return;
     this.run('hand back', async () => {
       const agent = this.s.agents[task.agentId];
       const owner = this.s.people[task.ownerId]?.name || 'A teammate';
       const r = task.result || {};
       const note = clip(`${owner}'s agent ${agent.name} did "${task.title}" for you${task.repo ? ` in ${task.repo}` : ''}; accepted. ${r.summary || ''}${r.files?.length ? ` Changed: ${r.files.join(', ')}.` : ''}`, 1500);
-      for (const theirs of this.requesterAgents(task)) {
+      for (const theirs of (task.askedBy ? [this.s.agents[task.askedBy]].filter(Boolean) : this.requesterAgents(task))) {
         await this.meko.remember({
           agent: agent.name, key: this.memKey(theirs), datapack: this.packOf(task), text: note,
           metadata: { kind: 'handback', author: `agent:${agent.id}`, task: task.id },
@@ -277,7 +277,8 @@ export class Memory {
     const key = this.memKey(agent);
     const meta = { agentId: agent.id, summary: `${agent.name} reviews its memory` };
     const pack = this.packOf();
-    const all = (await this.meko.listAll({ agent: agent.name, key, datapack: pack, meta })).map((m) => ({ ...m, pack }));
+    // Meko lists across agents; only maintain rows attributed to this agent.
+    const all = (await this.meko.listAll({ agent: agent.name, key, datapack: pack, meta })).filter((m) => m.writer === key).map((m) => ({ ...m, pack }));
     all.sort((a, b) => String(b.at).localeCompare(String(a.at)));
     const digest = { at: new Date().toISOString(), reviewed: all.length, merged: [], forgot: [], suggest: [] };
     const gone = new Set();
@@ -330,7 +331,7 @@ export class Memory {
     // Meko may extract memories asynchronously; find the one just written.
     await new Promise((r) => setTimeout(r, 1500));
     const hits = await this.meko.recall({ agent: author || 'person', key: this.spaceKey(space), datapack: this.spacePack(space), query: lesson.text, limit: 3, meta });
-    return hits.find((h) => h.text && lesson.text.includes(h.text.slice(0, 40)))?.id || hits[0]?.id || null;
+    return hits.find((h) => h.text && lesson.text.includes(h.text.slice(0, 40)))?.id || null;
   }
 
   /** One-way promotion into the space's shared knowledge, after a person approved it. */
