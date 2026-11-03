@@ -31,6 +31,15 @@ try {
   // Friend: a second install pastes the whole message.
   const friend = await launch(dirs[1]); apps.push(friend);
   const fp = await friend.firstWindow();
+  if (process.platform === 'darwin') {
+    // Native macOS shortcuts are dispatched through application menu roles.
+    // Playwright's fill/keyboard events alone can succeed without this menu.
+    const editRoles = await friend.evaluate(({ Menu }) =>
+      Menu.getApplicationMenu()?.items.flatMap((item) => item.submenu?.items.map((entry) => entry.role) || []) || []);
+    for (const role of ['undo', 'redo', 'cut', 'copy', 'paste', 'selectAll']) {
+      assert.ok(editRoles.some((entry) => entry?.toLowerCase() === role.toLowerCase()), `macOS Edit menu provides ${role}`);
+    }
+  }
   await fp.setViewportSize({ width: 1280, height: 900 });
   await fp.locator('button', { hasText: 'Join a space' }).first().click();
   await fp.locator('#your-name').fill('Arjun');

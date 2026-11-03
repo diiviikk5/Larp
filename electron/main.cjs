@@ -641,7 +641,11 @@ for (const [name, handler] of Object.entries(handlers)) {
 app.setName('Larp');
 // A separate data folder lets several Larp instances run on one machine (testing, demos).
 if (process.env.LARP_DATA_DIR) app.setPath('userData', path.resolve(process.env.LARP_DATA_DIR));
-Menu.setApplicationMenu(null);
+// macOS routes standard editing shortcuts through the application menu. Without
+// an Edit menu, native ⌘V (and copy/cut/undo) do not reach text fields.
+Menu.setApplicationMenu(process.platform === 'darwin'
+  ? Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }])
+  : null);
 
 /**
  * The startup splash: a small centered card where the Larp mark assembles while services start.
