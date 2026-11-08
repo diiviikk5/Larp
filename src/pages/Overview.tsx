@@ -108,7 +108,7 @@ export function Overview({ ctx }: { ctx: Ctx }) {
         </div>
       </div>
       <div className="chat-dock">
-        <div className="chat-col"><QuickCompose ctx={ctx} /></div>
+        <div className="chat-col"><QuickCompose key={space.id} ctx={ctx} /></div>
       </div>
     </div>
   );
