@@ -20,7 +20,7 @@ import { People } from './pages/People';
 import { ActivityPage } from './pages/Activity';
 import { MemoryPage } from './pages/Memory';
 import { APP_NAMES, AppsPage, AppView } from './pages/Apps';
-import { OceanBackdrop, OceanHome, OceanMenuButton } from './ocean/Ocean';
+import { OceanBackdrop } from './ocean/Ocean';
 import { Settings } from './pages/Settings';
 import { Plans } from './pages/Plans';
 import { Money } from './pages/Money';
@@ -42,11 +42,10 @@ export function Shell({ larp, state, device, setDevice, reloadDevice, phone }: {
   const [newTask, setNewTask] = useState<null | { agentId?: string }>(null);
   const [palette, setPalette] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [drawer, setDrawer] = useState(false);
   const ocean = look.preset === 'Ocean' && !phone;
   useEffect(() => { if (space) localStorage.setItem('larp.space', space.id); }, [space?.id]);
 
-  const go = (next: Route) => { setHistory((h) => [...h.slice(-20), route]); setRoute(next); setMoreOpen(false); setDrawer(false); };
+  const go = (next: Route) => { setHistory((h) => [...h.slice(-20), route]); setRoute(next); setMoreOpen(false); };
   const switchSpace = (s: Space) => { setSpaceId(s.id); setRoute(defaultRoute(s)); };
 
   useEffect(() => {
@@ -110,7 +109,7 @@ export function Shell({ larp, state, device, setDevice, reloadDevice, phone }: {
     switch (route.page) {
       case 'workspace': return <Workspace ctx={ctx} />;
       case 'skills': return <SkillsPage ctx={ctx} />;
-      case 'overview': return ocean ? <OceanHome ctx={ctx} /> : <Overview ctx={ctx} />;
+      case 'overview': return <Overview ctx={ctx} />;
       case 'tasks': return <Tasks ctx={ctx} initial={route.filter} />;
       case 'task': return <TaskDetail ctx={ctx} id={route.id} tab={route.tab} onBack={() => go(history.at(-1)?.page === 'task' ? { page: 'tasks' } : history.at(-1) || { page: 'tasks' })} />;
       case 'agents': return <Agents ctx={ctx} />;
@@ -131,10 +130,8 @@ export function Shell({ larp, state, device, setDevice, reloadDevice, phone }: {
   const crumbs = crumbsFor(route, state, space);
 
   return (
-    <div className={'app' + (phone ? ' is-phone' : '') + (window.larp ? ' has-titlebar' : '') + (ocean ? ' ocean' : '') + (ocean && drawer ? ' drawer-open' : '') + (ocean && route.page === 'overview' ? ' ocean-on-home' : '')}>
-      {ocean && <OceanBackdrop active={route.page === 'overview'} />}
-      {ocean && route.page === 'overview' && <OceanMenuButton onClick={() => setDrawer((d) => !d)} />}
-      {ocean && drawer && <div className="ocean-scrim" onClick={() => setDrawer(false)} />}
+    <div className={'app' + (phone ? ' is-phone' : '') + (window.larp ? ' has-titlebar' : '') + (ocean ? ' ocean' : '')}>
+      {ocean && <OceanBackdrop />}
       {!phone && (
         <aside className="sidebar">
           <div className="drag-strip" />

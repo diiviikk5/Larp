@@ -117,7 +117,8 @@ export function QuickCompose({ ctx }: { ctx: Ctx }) {
   const agents = state.agents.filter((a) => a.spaceIds.includes(space.id));
   const remembered = localStorage.getItem(`larp.agent.${space.id}`) || '';
   const [agentId, setAgentId] = useState(agents.some((a) => a.id === remembered) ? remembered : agents.find((a) => a.ownerId === state.me.id)?.id || agents[0]?.id || '');
-  const [text, setText] = useState('');
+  const draftKey = `larp.draft.${space.id}`;
+  const [text, setText] = useState(() => localStorage.getItem(draftKey) || '');
   const [check, setCheck] = useState(() => localStorage.getItem(`larp.check.${space.id}`) || '');
   const [picking, setPicking] = useState(false);
   const action = useAction();
@@ -126,7 +127,7 @@ export function QuickCompose({ ctx }: { ctx: Ctx }) {
   const mine = agent?.ownerId === state.me.id;
 
   const send = () => {
-    if (!agent || !text.trim()) return;
+    if (!agent || !text.trim() || action.busy) return;
     localStorage.setItem(`larp.agent.${space.id}`, agent.id);
     localStorage.setItem(`larp.check.${space.id}`, check);
     const [first, ...rest] = text.trim().split('\n');
@@ -135,27 +136,19 @@ export function QuickCompose({ ctx }: { ctx: Ctx }) {
         spaceId: space.id, agentId: agent.id, kind: space.kind === 'build' ? 'code' : 'general',
         title: first.slice(0, 80), instructions: rest.length ? text.trim() : first, check: check.trim() || undefined,
       });
+      localStorage.removeItem(draftKey);
       setText('');
       ctx.go({ page: 'task', id: task.id });
     });
   };
 
-  if (!agents.length) {
-    return (
-      <div className="quick quick-empty">
-        <span>Add an agent to start delegating work.</span>
-        <button className="btn btn-primary btn-sm" onClick={() => ctx.go({ page: 'agent-new' })}><Plus size={14} /> Add agent</button>
-      </div>
-    );
-  }
-
   return (
     <div className="quick">
-      <textarea aria-label="Describe a task" rows={2} value={text} onChange={(e) => setText(e.target.value)}
-        placeholder={mine ? `What should ${agent?.name} do?` : `What should ${owner?.name}'s ${agent?.name} do? ${owner?.name} approves before it runs.`}
-        onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); } }} />
+      <textarea aria-label="Describe a task" rows={2} value={text} onChange={(e) => { setText(e.target.value); localStorage.setItem(draftKey, e.target.value); }}
+        placeholder={!agent ? 'Describe your task, then add an agent to send it…' : mine ? `What should ${agent?.name} do?` : `What should ${owner?.name}'s ${agent?.name} do? ${owner?.name} approves before it runs.`}
+        onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }} />
       <div className="quick-row">
-        <div className="quick-picker">
+        {!agent ? <button className="btn btn-primary btn-sm" onClick={() => ctx.go({ page: 'agent-new' })}><Plus size={14} /> Add agent</button> : <div className="quick-picker">
           <button className="chip" aria-haspopup="listbox" aria-expanded={picking} onClick={() => setPicking((p) => !p)}>
             {agent && <AgentAvatar agent={agent} owner={owner} size={18} status={agentStatus(agent)} />}
             <span>{agent?.name}</span><span className="faint">{mine ? 'you' : owner?.name}</span>
@@ -174,13 +167,13 @@ export function QuickCompose({ ctx }: { ctx: Ctx }) {
               })}
             </div>
           )}
-        </div>
+        </div>}
         {space.kind === 'build' && (
           <label className="chip check-chip"><span className="faint mono">check $</span><input aria-label="Check command" className="mono" placeholder="npm test" value={check} onChange={(e) => setCheck(e.target.value)} /></label>
         )}
         <span className="grow" />
         <button className="btn btn-ghost btn-sm" onClick={() => ctx.newTask({ agentId: agent?.id })}>More options</button>
-        <button className="btn btn-primary btn-sm" disabled={!text.trim() || action.busy} onClick={send}>{mine ? 'Start' : `Send to ${owner?.name}`} <Kbd>Ctrl ⏎</Kbd></button>
+        <button className="btn btn-primary btn-sm" disabled={!agent || !text.trim() || action.busy} onClick={send}>{!agent || mine ? 'Start' : `Send to ${owner?.name}`} <Kbd>Ctrl ⏎</Kbd></button>
       </div>
       {action.error && <p className="error-text">{action.error}</p>}
     </div>
